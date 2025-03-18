@@ -6,29 +6,31 @@ let rules = [
   { a: "X", b: "F+[[X]-X]-F[-FX]+X" },
   { a: "F", b: "FF" },
 ];
-let silenceTimer; // Timer to handle pauses
+let silenceTimer;
 
 // Speech recognition
 let mic, recorder, soundFile, video, amplitude;
 let recording = false;
 let threshold = 0.05;
-let stopTimer, stopTimerStart; // Timer reference
+let stopTimer, stopTimerStart;
 let delayTime = 30000;
 
-let cooldownTimer; // Cooldown timer reference
+let cooldownTimer;
 let cooldownTime = 300000; // 5 minutes in milliseconds
-let isOnCooldown = false; // Instead of using null
+let isOnCooldown = false;
+
+soundFile = new p5.SoundFile();
+const socket = io();
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
-  video = createCapture(VIDEO);
-  video.hide(); // Hide default video element
+  // video = createCapture(VIDEO);
+  // video.hide(); // Hide default video element
 
   angle = radians(25);
   len = height / 3;
 
-  // Setup mic
   mic = new p5.AudioIn();
 
   recorder = new p5.SoundRecorder();
@@ -38,28 +40,54 @@ function setup() {
   amplitude.setInput(mic);
 
   console.log("recorder init,", recorder);
+  if (!mic.enabled) {
+    mic.start(() => {
+      console.log("Mic started");
+    });
+  }
 
-  mic.start(() => {
-    console.log("Mic started");
+  socket.on("sentiment", (data) => {
+    if (data.sentiment) {
+      sentiment = `Sentiment: ${data.sentiment}`;
+      console.log("Updated sentiment:", sentiment);
+    }
+  });
+
+  socket.on("connect", () => {
+    console.log("Connected to Socket.IO server");
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Disconnected from Socket.IO server");
   });
 }
-soundFile = new p5.SoundFile();
 
 function draw() {
-  turtle(); // Draw the plant
+  turtle();
 
   if (mic) {
     let vol = amplitude.getLevel();
-    // console.log("Volume:", vol);
-    if (vol >= threshold && !recording && !isOnCooldown) {
-      startRecording();
-      clearTimeout(silenceTimer); // Reset the silence timer
-      console.log("vol >= threshold", vol);
+
+    if (vol >= threshold) {
+      if (!recording && !isOnCooldown) {
+        // Start recording if not already recording and not on cooldown
+        startRecording();
+        console.log("Recording started because volume >= threshold:", vol);
+      }
+
+      if (recording) {
+        // Reset the silence timer if people are still talking
+        clearTimeout(silenceTimer);
+        silenceTimer = null;
+        console.log(
+          "Resetting silence timer because people are still talking:",
+          vol
+        );
+      }
     } else if (vol < threshold && recording && !silenceTimer) {
-      // Start a silence timer, stop only if silence lasts 2 seconds
-      // console.log("vol < threshold", vol);
-      console.log("timer started", vol);
-      silenceTimer = setTimeout(stopRecording, 10000);
+      // Start the silence timer if volume is below the threshold
+      console.log("Starting silence timer because volume < threshold:", vol);
+      silenceTimer = setTimeout(stopRecording, 20000); // Stop recording after 20 seconds of silence
     }
   }
 }
@@ -70,6 +98,8 @@ function startRecording() {
     recording = true;
     recorder.record(soundFile);
     isOnCooldown = true;
+
+    soundFile.onended(stopRecording);
   } else {
     console.error("Microphone not enabled yet!");
   }
@@ -84,17 +114,15 @@ async function stopRecording() {
     console.log("Stopped recording");
 
     try {
-      // Wait for soundFile to be ready
       await waitForSoundFileToLoad(soundFile);
       console.log("Sound file ready");
       sendAudioToServer(soundFile.getBlob());
 
-      // Activate cooldown
       isOnCooldown = true;
       console.log("Cooldown started");
       silenceTimer = null;
       setTimeout(() => {
-        isOnCooldown = false; // Reset cooldown after 5 minutes
+        isOnCooldown = false;
         console.log("Cooldown period ended");
       }, cooldownTime);
     } catch (err) {
@@ -105,7 +133,6 @@ async function stopRecording() {
   }
 }
 
-// Helper function to wait for soundFile to load
 async function waitForSoundFileToLoad(soundFile, maxWaitTime = 50000) {
   const interval = 100; // Check every 100ms
   let waited = 0;
@@ -145,7 +172,7 @@ function displayTranscription(text) {
 
 function generate() {
   let nextSentence = "";
-  len *= 0.5;
+  len *= 0.9;
 
   for (let i = 0; i < sentence.length; i++) {
     let current = sentence.charAt(i);

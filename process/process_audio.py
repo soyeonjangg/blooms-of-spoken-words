@@ -1,12 +1,10 @@
+# OLLAMA_HOST=127.0.0.1:1122 ollama serve
+# currently have samantha mistral model installed: https://ollama.com/library/samantha-mistral
+
 import sys
 from faster_whisper import WhisperModel
-from scipy.special import softmax
 import numpy as np
-
-print("HELLOP")
-# Load model directly
-import torch
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+import requests
 
 if len(sys.argv) < 2:
     print("Usage: python process_audio.py <file_path>")
@@ -17,35 +15,42 @@ model_size = "large-v3"
 model = WhisperModel(model_size, device="cpu", compute_type="int8")
 
 segments, info = model.transcribe(file_path, beam_size=5, language="en")
-# segments = list(segments)
-print(segments)
-# for segment in segments:
-#     print(segment.text)
-
-tokenizer = DistilBertTokenizer.from_pretrained(
-    "distilbert-base-uncased-finetuned-sst-2-english"
-)
-senti_model = DistilBertForSequenceClassification.from_pretrained(
-    "distilbert-base-uncased-finetuned-sst-2-english"
-)
-
-inputs = tokenizer("Hello, my dog is cute", return_tensors="pt")
-with torch.no_grad():
-    logits = senti_model(**inputs).logits
-
-predicted_class_id = logits.argmax().item()
-senti_model.config.id2label[predicted_class_id]
+conversation_text = " ".join([segment.text for segment in list(segments)])
+print("Transcription:", conversation_text)
 
 
-# encoded_input = tokenizer(segments, return_tensors="pt")
-# output = senti_model(**encoded_input)
-# scores = output[0][0].detach().numpy()
-# scores = softmax(scores)
+# Send text to Ollama for sentiment analysis
+ollama_api_url = "http://localhost:1122/api/generate"
+# prompt = f"Classify the sentiment of this conversation as either 'positive', 'neutral', or 'negative'. Respond with only one of these words and nothing else with no explanation: '{conversation_text}'"
 
-# ranking = np.argsort(scores)
-# ranking = ranking[::-1]
+prompt = f"Classify the sentiment of the conversation. Determine if it is positive, neutral, or negative, and return the answer as  the corresponding sentiment label 'positive' or 'neutral' or 'negative' with no explanation. Here is the conversation: {conversation_text}"
 
-# for i in range(scores.shape[0]):
-#     l = config.id2label[ranking[i]]
-#     s = scores[ranking[i]]
-#     print(f"{i+1}) {l} {np.round(float(s), 4)}")
+try:
+    response = requests.post(
+        ollama_api_url,
+        json={"model": "llama3.1", "prompt": prompt, "stream": False},
+    )
+    if response.status_code == 200:
+        sentiment_analysis = response.json().get("response", "Error in response")
+        sentiment_analysis = sentiment_analysis.lower()
+
+        print("Sentiment Analysis:", sentiment_analysis)
+
+        # Send the sentiment back to the server
+        server_url = (
+            "http://localhost:3000/sentiment"  # Replace with your server's endpoint
+        )
+        server_response = requests.post(
+            server_url,
+            json={"sentiment": sentiment_analysis},
+            headers={"Content-Type": "application/json"},  # Ensure correct content type
+        )
+        if server_response.status_code == 200:
+            print("Sentiment successfully sent to the server.")
+        else:
+            print("Error sending sentiment to the server:", server_response.text)
+    else:
+        print("Error communicating with Ollama API:", response.text)
+
+except requests.exceptions.RequestException as e:
+    print("Error connecting to Ollama API:", e)
