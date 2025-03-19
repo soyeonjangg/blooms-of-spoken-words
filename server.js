@@ -3,7 +3,6 @@ const multer = require("multer");
 const fs = require("fs");
 const cors = require("cors");
 
-// const { Server } = require("socket.io");
 const { exec } = require("child_process");
 const { createServer } = require("node:http");
 const { Server } = require("socket.io");
@@ -16,7 +15,6 @@ const port = 3001;
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
-// const server = createServer(app);
 const server = createServer(app);
 const io = new Server(server);
 
@@ -85,11 +83,6 @@ app.post("/sentiment", (req, res) => {
     res.status(400).send("Invalid request");
   }
 });
-
-// fetch sentiment
-// app.get("/sentiment", (req, res) => {
-//   res.json({ sentiment: lastSentiment });
-// });
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`Server running at http://localhost:${port}`);

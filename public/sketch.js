@@ -22,23 +22,55 @@ let sentiment = "neutral";
 
 let plantCol = [0, 255, 0, 150];
 let params = {
-  positivityIntensity: 0, // Slider for sentiment intensity (-100 to 100)
-  negativityIntensity: 0, // Slider for sentiment intensity
-  neutralityIntensity: 0, // Slider for sentiment intensity
-  branchLength: 0.9, // Branch length reduction factor
+  positivityIntensity: 0,
+  negativityIntensity: 0,
+  neutralityIntensity: 0,
+  branchLength: 0.9,
 };
+let gui;
+let toggleButton;
+const socket = io();
+let demoMode = true;
 
 soundFile = new p5.SoundFile();
-const socket = io();
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
-  // background(220);
-  video = createCapture(VIDEO);
-  video.size(windowWidth, windowHeight);
-  // image(video, 0, 0, width, height);
-  video.hide(); // Hide default video element
+  clearLiveMode();
 
+  createCanvas(windowWidth, windowHeight);
+  // video = createCapture(VIDEO);
+  // video.size(windowWidth, windowHeight);
+  // video.hide(); // Hide default video element
+
+  gui = createGui("Plant Controls");
+  gui.show(); // since by default it's demo mode
+  gui.addObject(params);
+
+  if (!localStorage.getItem("liveMode")) {
+    toggleButton = createButton("Turn Off Demo");
+    toggleButton.class("toggle-button");
+
+    console.log(demoMode);
+    let guiX = 10;
+    let guiY = 50;
+    let guiHeight = 200;
+
+    toggleButton.position(guiX, guiY - 40);
+    // toggleButton.position(windowWidth - 130, 10); // Adjust the x and y values as needed
+    toggleButton.mousePressed(() => {
+      demoMode = !demoMode;
+      if (demoMode) {
+        gui.show();
+        localStorage.setItem("liveMode", false);
+        console.log("Demo mode enabled");
+      } else {
+        gui.hide();
+        localStorage.setItem("liveMode", true);
+        console.log("Demo mode disabled");
+        toggleButton.hide();
+      }
+    });
+  }
   angle = radians(25);
   len = height / 3;
 
@@ -57,15 +89,11 @@ function setup() {
     });
   }
 
-  let gui = createGui("Plant Controls");
-  gui.addObject(params); // Add the params object to the GUI
-
   socket.on("sentiment", (data) => {
     if (data.sentiment) {
       sentiment = `Sentiment: ${data.sentiment}`;
       console.log("Updated sentiment:", sentiment);
 
-      // Adjust plant growth and color based on sentiment
       if (sentiment === "positive") {
         len *= 1.1; // Increase branch length
         plantColor = [0, 255, 0, 150]; // Green color for healthy growth
@@ -88,7 +116,9 @@ function setup() {
 }
 
 function draw() {
-  image(video, 0, 0, width, height);
+  // image(video, 0, 0, width, height);
+  background(220); // only need it when video is disabled
+  displayClock();
 
   turtle();
 
@@ -245,4 +275,51 @@ function turtle() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+}
+
+function clearLiveMode() {
+  localStorage.removeItem("liveMode");
+  console.log("liveMode cleared from localStorage");
+}
+
+function displayClock() {
+  let now = new Date();
+
+  // Get the current time
+  let hours = now.getHours();
+  let minutes = now.getMinutes();
+  let seconds = now.getSeconds();
+
+  // Get the current date
+  let year = now.getFullYear();
+  let month = nf(now.getMonth() + 1, 2);
+  let day = nf(now.getDate(), 2);
+
+  // Get the current day of the week
+  let daysOfWeek = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  let dayOfWeek = daysOfWeek[now.getDay()];
+
+  // Format the time as HH:MM:SS
+  let timeString = nf(hours, 2) + ":" + nf(minutes, 2) + ":" + nf(seconds, 2);
+
+  // Format the date as YYYY-MM-DD
+  let dateString = year + "-" + month + "-" + day;
+  noStroke();
+  textSize(45);
+  fill(0);
+  textAlign(RIGHT, TOP);
+  text(timeString, width - 10, 10);
+  textSize(25);
+  text(dayOfWeek, width - 10, 60);
+
+  textSize(20);
+  text(dateString, width - 10, 95);
 }
