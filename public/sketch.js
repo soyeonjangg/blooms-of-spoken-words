@@ -1,3 +1,5 @@
+// https://youtu.be/Y3UfVRQ3S_8?si=BhY5OZYGQHZvMeUV
+
 let axiom = "-X";
 let sentence = axiom;
 let len;
@@ -27,6 +29,7 @@ let params = {
   neutralityIntensity: 0,
   branchLength: 0.9,
 };
+
 let gui;
 let toggleButton;
 const socket = io();
@@ -36,11 +39,19 @@ soundFile = new p5.SoundFile();
 
 function setup() {
   clearLiveMode();
+  maxLen = height / 3; // Maximum branch length
+  minLen = height / 20; // Minimum branch length
+
+  // for grass
+  tmaxLen = height * 0.13;
+  tminLen = tmaxLen * 0.1;
+  smaxLen = height * 0.2;
+  sminLen = tmaxLen * 0.1;
 
   createCanvas(windowWidth, windowHeight);
-  // video = createCapture(VIDEO);
-  // video.size(windowWidth, windowHeight);
-  // video.hide(); // Hide default video element
+  video = createCapture(VIDEO);
+  video.size(windowWidth, windowHeight);
+  video.hide(); // Hide default video element
 
   gui = createGui("Plant Controls");
   gui.show(); // since by default it's demo mode
@@ -56,7 +67,6 @@ function setup() {
     let guiHeight = 200;
 
     toggleButton.position(guiX, guiY - 40);
-    // toggleButton.position(windowWidth - 130, 10); // Adjust the x and y values as needed
     toggleButton.mousePressed(() => {
       demoMode = !demoMode;
       if (demoMode) {
@@ -71,6 +81,7 @@ function setup() {
       }
     });
   }
+
   angle = radians(25);
   len = height / 3;
 
@@ -93,16 +104,8 @@ function setup() {
     if (data.sentiment) {
       sentiment = `Sentiment: ${data.sentiment}`;
       console.log("Updated sentiment:", sentiment);
-
-      if (sentiment === "positive") {
-        len *= 1.1; // Increase branch length
-        plantColor = [0, 255, 0, 150]; // Green color for healthy growth
-        generate(); // Add new growth
-      } else if (sentiment === "negative") {
-        plantColor = [255, 0, 0, 150]; // Red color for withered state
-      } else if (sentiment === "neutral") {
-        plantColor = [200, 200, 0, 150]; // Yellow color for neutral state
-      }
+      generate(sentiment);
+      turtle();
     }
   });
 
@@ -116,9 +119,24 @@ function setup() {
 }
 
 function draw() {
-  // image(video, 0, 0, width, height);
-  background(220); // only need it when video is disabled
+  image(video, 0, 0, width, height);
+  // background(220); // only need it when video is disabled
   displayClock();
+  randomSeed(42); // so the grass doesn't move
+
+  push();
+  translate(0, height);
+  for (let nn = 0; nn < 2; nn++) {
+    // treeMaker(tmaxLen);
+    for (let gn = 0; gn < width; gn++) {
+      push();
+      translate(gn, 0);
+      grassMaker(smaxLen, random(-PI, PI));
+      pop();
+    }
+  }
+  pop();
+  // noLoop();
 
   turtle();
 
@@ -147,6 +165,21 @@ function draw() {
       silenceTimer = setTimeout(stopRecording, 20000); // Stop recording after 20 seconds of silence
     }
   }
+}
+
+function grassMaker(len, theta) {
+  push();
+  translate(0, 0);
+  rotate(theta);
+  let sw = map(len, sminLen, smaxLen, 1, 5);
+  strokeWeight(sw);
+  stroke(0, random(50, 100), 0, 255);
+  line(0, 0, 0, -len);
+  translate(0, -len);
+  if (len > sminLen) {
+    grassMaker(len * 0.7, theta * 1.1);
+  }
+  pop();
 }
 
 function startRecording() {
@@ -229,7 +262,15 @@ function displayTranscription(text) {
 
 function generate() {
   let nextSentence = "";
-  len *= 0.9;
+
+  if (sentiment === "positive" && len < maxLen) {
+    len *= 1.1; // Increase branch length for positive sentiment
+  } else if (sentiment === "negative" && len > minLen) {
+    len *= 0.9; // Decrease branch length for negative sentiment
+  } else if (sentiment === "neutral") {
+    len *= 1.02; // Slight growth for neutral sentiment
+  }
+  len = constrain(len, minLen, maxLen);
 
   for (let i = 0; i < sentence.length; i++) {
     let current = sentence.charAt(i);

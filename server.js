@@ -43,10 +43,6 @@ app.post("/transcribe", upload.single("audio"), async (req, res) => {
     return res.status(400).json({ error: "No audio file uploaded" });
   }
 
-  // const fakeTranscription = "This is a sample transcription.";
-
-  // res.json({ text: fakeTranscription }); // Return a JSON response
-
   const audioPath = `uploads/${req.file.originalname}`;
   fs.writeFileSync(audioPath, req.file.buffer);
 
