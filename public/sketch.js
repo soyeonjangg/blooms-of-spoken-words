@@ -18,15 +18,26 @@ let delayTime = 30000;
 let cooldownTimer;
 let cooldownTime = 300000; // 5 minutes in milliseconds
 let isOnCooldown = false;
+let sentiment = "neutral";
+
+let plantCol = [0, 255, 0, 150];
+let params = {
+  positivityIntensity: 0, // Slider for sentiment intensity (-100 to 100)
+  negativityIntensity: 0, // Slider for sentiment intensity
+  neutralityIntensity: 0, // Slider for sentiment intensity
+  branchLength: 0.9, // Branch length reduction factor
+};
 
 soundFile = new p5.SoundFile();
 const socket = io();
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-
-  // video = createCapture(VIDEO);
-  // video.hide(); // Hide default video element
+  // background(220);
+  video = createCapture(VIDEO);
+  video.size(windowWidth, windowHeight);
+  // image(video, 0, 0, width, height);
+  video.hide(); // Hide default video element
 
   angle = radians(25);
   len = height / 3;
@@ -46,10 +57,24 @@ function setup() {
     });
   }
 
+  let gui = createGui("Plant Controls");
+  gui.addObject(params); // Add the params object to the GUI
+
   socket.on("sentiment", (data) => {
     if (data.sentiment) {
       sentiment = `Sentiment: ${data.sentiment}`;
       console.log("Updated sentiment:", sentiment);
+
+      // Adjust plant growth and color based on sentiment
+      if (sentiment === "positive") {
+        len *= 1.1; // Increase branch length
+        plantColor = [0, 255, 0, 150]; // Green color for healthy growth
+        generate(); // Add new growth
+      } else if (sentiment === "negative") {
+        plantColor = [255, 0, 0, 150]; // Red color for withered state
+      } else if (sentiment === "neutral") {
+        plantColor = [200, 200, 0, 150]; // Yellow color for neutral state
+      }
     }
   });
 
@@ -63,6 +88,8 @@ function setup() {
 }
 
 function draw() {
+  image(video, 0, 0, width, height);
+
   turtle();
 
   if (mic) {
@@ -214,4 +241,8 @@ function turtle() {
       pop();
     }
   }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
