@@ -54,6 +54,7 @@ let buttercup,
   olive_branch,
   white_rose;
 
+let positiveFlowers, negativeFlowers, neutralFlowers;
 soundFile = new p5.SoundFile();
 
 function preload() {
@@ -76,6 +77,10 @@ function preload() {
   mistle_toe = loadImage("flowers/neutral/mistle_toe.png");
   olive_branch = loadImage("flowers/neutral/olive_branch.png");
   white_rose = loadImage("flowers/neutral/white_rose.png");
+
+  positiveFlowers = [bluebell, daffodil, lavender, sunflower, sweet_pea];
+  negativeFlowers = [buttercup, marigold, org_lily, y_carnation];
+  neutralFlowers = [fern, ivy, mistle_toe, olive_branch, white_rose];
 }
 
 function setup() {
@@ -158,15 +163,11 @@ function draw() {
   // stroke(255, 0, 0);
   // rect(width - 200, 0, 200, 120); // Adjust these values to match the clock area
 
-  // for (let flower of flowers) {
-  //   paintFlower(flower.img, flower.x, flower.y, flower.negativity);
-  // }
   image(flowerLayer, 0, 0);
 
   for (let i = flowers.length - 1; i >= 0; i--) {
     let flower = flowers[i];
 
-    // Apply fading logic only to negative flowers
     if (flower.negativity) {
       // Gradually increase fadeProgress and reduce opacity
       flower.fadeProgress += 0.002; // Adjust this value to control the speed of color change
@@ -351,10 +352,6 @@ function displayClock() {
 function paintRandomFlowerOnEdges() {
   flowers = [];
 
-  let positiveFlowers = [bluebell, daffodil, lavender, sunflower, sweet_pea];
-  let negativeFlowers = [buttercup, marigold, org_lily, y_carnation];
-  let neutralFlowers = [fern, ivy, mistle_toe, olive_branch, white_rose];
-
   if (demoMode) {
     // Spawn flowers based on intensity values
     for (let i = 0; i < params.positivityIntensity; i++) {
@@ -385,7 +382,6 @@ function spawnFlowerOnEdge(flowerImages) {
   let scaledFlowerRadius = (flowerSize * scaleFactor) / 2;
   let edge = floor(random(4));
 
-  // Determine the position based on the selected edge
   switch (edge) {
     case 0: // Top edge
       x = random(scaledFlowerRadius, width - scaledFlowerRadius);
@@ -406,9 +402,9 @@ function spawnFlowerOnEdge(flowerImages) {
   }
 
   let img = random(flowerImages); // Select a random flower image
-
+  // Ensure negativity is a boolean
   if (demoMode) {
-    negativity = params.negativityIntensity;
+    negativity = flowerImages === negativeFlowers; // True if negative flowers are being spawned
   } else {
     negativity = sentiment === "negative";
   }
@@ -437,6 +433,7 @@ function paintFlower(img, x, y, fadeProgress, opacity) {
     // Only draw points for non-transparent pixels
     if (alpha(c) > 0) {
       // Blend the color toward a darker brown with desaturation
+      console.log(fadeProgress);
       if (fadeProgress > 0) {
         let targetBrown = color(101, 67, 33); // Darker brown color
         let r = lerp(red(c), red(targetBrown), fadeProgress); // Blend red channel
