@@ -55,47 +55,6 @@ let buttercup,
   pink_rose;
 const getStatus = { loading: false, error: false };
 
-let city = "Waterloo";
-let current = "Loading weather...";
-function getWeather(prov, cityCode) {
-  let src = `https://weather.gc.ca/rss/weather/43.472_-80.53_e.xml`;
-
-  getStatus.loading = true;
-
-  loadXML(
-    src,
-    (xml) => {
-      print("👍 success");
-
-      // get city name
-      city = xml.getChild("title").getContent().split(" - ")[0].trim();
-      print(`'${city}'`);
-
-      // find current forecast
-      // (I figured this out by looking at the raw XML in a web browser)
-      let entries = xml.getChildren("entry");
-
-      for (let x of entries) {
-        let entryTitle = x.getChild("title").getContent();
-
-        let t = entryTitle.split(":");
-        if (t[0].startsWith("Current Conditions")) {
-          print(t[1]);
-          current = t[1];
-        }
-      }
-      getStatus.result = true;
-      getStatus.loading = false;
-    },
-    (e) => {
-      // print(`error '${e}'`);
-      print(`❌ invalid city code? ${cityCode}`);
-      getStatus.result = false;
-      getStatus.loading = false;
-    }
-  );
-}
-
 let positiveFlowers, negativeFlowers;
 soundFile = new p5.SoundFile();
 function preload() {
