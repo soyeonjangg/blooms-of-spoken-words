@@ -158,11 +158,6 @@ function setup() {
   createSettingsGui(params, { callback: paramChanged, load: false });
 
   _paramGui.show(); // since by default it's demo mode
-  // fetchWeather(); // Fetch the weather data
-  // setInterval(fetchWeather, 600000); // Refresh weather data every 10 minutes
-  setInterval(getWeather("on", 53), 60000);
-
-  // setInterval(getWeatherForWaterloo, 600000); // Refresh every 10 minutes
 
   if (!localStorage.getItem("liveMode")) {
     toggleButton = createButton("Turn Off Demo");
@@ -497,15 +492,6 @@ function paintFlower(flower, img, x, y) {
       let scaledX = x + (sourceX - img.width / 2) * scaleFactor + random(-1, 1); // Add slight randomness to position
       let scaledY =
         y + (sourceY - img.height / 2) * scaleFactor + random(-1, 1); // Add slight randomness to position
-
-      if (
-        scaledX >= width - 200 &&
-        scaledX <= width &&
-        scaledY >= 0 &&
-        scaledY <= 120
-      ) {
-        continue;
-      }
 
       // Store the point's x, y, and color in the flower object
       flower.xs.push(scaledX);
