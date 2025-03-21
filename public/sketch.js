@@ -27,14 +27,11 @@ let plantCol = [0, 255, 0, 150];
 let params = {
   positivityIntensity: 0,
   negativityIntensity: 0,
-  neutralityIntensity: 0,
   positivityIntensityMax: 10,
   negativityIntensityMax: 10,
-  neutralityIntensityMax: 10,
 };
 let prevPositivityIntensity = 0;
 let prevNegativityIntensity = 0;
-let prevNeutralityIntensity = 0;
 let gui;
 let toggleButton;
 const socket = io();
@@ -52,35 +49,101 @@ let buttercup,
   ivy,
   mistle_toe,
   olive_branch,
-  white_rose;
+  white_rose,
+  acacia,
+  honeysuckle,
+  pink_rose;
 
-let positiveFlowers, negativeFlowers, neutralFlowers;
+let positiveFlowers, negativeFlowers;
 soundFile = new p5.SoundFile();
-
 function preload() {
-  // negative
-  buttercup = loadImage("flowers/negative/buttercup.png");
-  marigold = loadImage("flowers/negative/marigold.png");
-  org_lily = loadImage("flowers/negative/orange_lily.png");
-  y_carnation = loadImage("flowers/negative/yellow carnation.png");
+  // Define the desired size for all images
+  let targetWidth = 200; // Set the desired width
+  let targetHeight = 200; // Set the desired height
 
-  // positive
-  bluebell = loadImage("flowers/positive/bluebell.png");
-  daffodil = loadImage("flowers/positive/daffodil.png");
-  lavender = loadImage("flowers/positive/lavender.png");
-  sunflower = loadImage("flowers/positive/sunflower.png");
-  sweet_pea = loadImage("flowers/positive/sweet_pea.png");
+  // negative flowers
+  buttercup = loadImage("flowers/negative/buttercup.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  columbine = loadImage("flowers/negative/columbine.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  lavender = loadImage("flowers/negative/lavender.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  marigold = loadImage("flowers/negative/marigold.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  nettle = loadImage("flowers/negative/nettle.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  thistle = loadImage("flowers/negative/thistle.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  thorn_apple = loadImage("flowers/negative/thorn_apple.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
 
-  // neutral
-  fern = loadImage("flowers/neutral/fern.png");
-  ivy = loadImage("flowers/neutral/ivy.png");
-  mistle_toe = loadImage("flowers/neutral/mistle_toe.png");
-  olive_branch = loadImage("flowers/neutral/olive_branch.png");
-  white_rose = loadImage("flowers/neutral/white_rose.png");
+  // positive flowers
+  acacia = loadImage("flowers/positive/acacia.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  bluebell = loadImage("flowers/positive/bluebell.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  honeysuckle = loadImage("flowers/positive/honeysuckle.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  ivy = loadImage("flowers/positive/ivy.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  lily_of_the_valley = loadImage(
+    "flowers/positive/lily_of_the_valley.png",
+    (img) => img.resize(targetWidth, targetHeight)
+  );
+  myrtle = loadImage("flowers/positive/myrtle.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  pink_rose = loadImage("flowers/positive/pink_rose.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  rose_mary = loadImage("flowers/positive/rose_mary.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  snowdrop = loadImage("flowers/positive/snowdrop.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
+  strawberry_blossom = loadImage(
+    "flowers/positive/strawberry_blossom.png",
+    (img) => img.resize(targetWidth, targetHeight)
+  );
+  sweet_william = loadImage("flowers/positive/sweet_william.png", (img) =>
+    img.resize(targetWidth, targetHeight)
+  );
 
-  positiveFlowers = [bluebell, daffodil, lavender, sunflower, sweet_pea];
-  negativeFlowers = [buttercup, marigold, org_lily, y_carnation];
-  neutralFlowers = [fern, ivy, mistle_toe, olive_branch, white_rose];
+  // Group flowers into arrays
+  positiveFlowers = [
+    acacia,
+    bluebell,
+    honeysuckle,
+    ivy,
+    lily_of_the_valley,
+    myrtle,
+    pink_rose,
+    rose_mary,
+    snowdrop,
+    strawberry_blossom,
+    sweet_william,
+  ];
+  negativeFlowers = [
+    buttercup,
+    columbine,
+    lavender,
+    marigold,
+    nettle,
+    thistle,
+    thorn_apple,
+  ];
 }
 
 function setup() {
@@ -89,7 +152,7 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   video = createCapture(VIDEO);
   video.size(windowWidth, windowHeight);
-  video.hide(); // Hide default video element
+  video.hide();
   flowerLayer = createGraphics(windowWidth, windowHeight);
   createSettingsGui(params, { callback: paramChanged, load: false });
 
@@ -168,30 +231,36 @@ function draw() {
   for (let i = flowers.length - 1; i >= 0; i--) {
     let flower = flowers[i];
 
+    // Draw the flower with its current fade progress and opacity
+    paintFlower(flower, flower.img, flower.x, flower.y);
+
     if (flower.negativity) {
-      // Gradually increase fadeProgress and reduce opacity
-      flower.fadeProgress += 0.002; // Adjust this value to control the speed of color change
-      flower.opacity -= 1; // Gradually reduce opacity
+      // Decrease lifespan if it is greater than 0
+      if (flower.lifespan > 0) {
+        flower.lifespan--;
+        continue; // Skip erasing logic until lifespan reaches 0
+      }
+      console.log(flower.lifespan);
+      // Start erasing the flower after its lifespan ends
+      for (let j = 0; j < flower.xs.length; j++) {
+        if (Math.random() < 0.1) {
+          // Control the erasing speed (adjust 0.1)
+          flowerLayer.erase();
+          flowerLayer.stroke(255);
+          flowerLayer.strokeWeight(5);
+          flowerLayer.point(flower.xs[j], flower.ys[j]);
+          flowerLayer.noErase();
+        }
+      }
 
-      // Clamp fadeProgress and opacity to valid ranges
-      flower.fadeProgress = constrain(flower.fadeProgress, 0, 1);
-      flower.opacity = constrain(flower.opacity, 0, 255);
+      // Gradually reduce the flower's overall opacity
+      flower.opacity = max(flower.opacity - 1, 0); // Adjust the reduction speed (adjust 1)
 
-      // Remove the flower if fully faded
-      if (flower.fadeProgress >= 1 && flower.opacity <= 0) {
+      // Remove the flower from the array if fully erased
+      if (flower.opacity <= 0) {
         flowers.splice(i, 1);
-
-        continue;
       }
     }
-    // Draw the flower with its current fade progress and opacity
-    paintFlower(
-      flower.img,
-      flower.x,
-      flower.y,
-      flower.fadeProgress,
-      flower.opacity
-    );
   }
 
   // Check if GUI values have change
@@ -360,70 +429,96 @@ function paintRandomFlowerOnEdges() {
     for (let i = 0; i < params.negativityIntensity; i++) {
       spawnFlowerOnEdge(negativeFlowers);
     }
-    for (let i = 0; i < params.neutralityIntensity; i++) {
-      spawnFlowerOnEdge(neutralFlowers);
-    }
   } else {
     if (sentiment === "positive") {
       spawnFlowerOnEdge(positiveFlowers);
     } else if (sentiment === "negative") {
       spawnFlowerOnEdge(negativeFlowers);
-    } else {
-      spawnFlowerOnEdge(neutralFlowers);
     }
   }
 }
 
 function spawnFlowerOnEdge(flowerImages) {
-  let x, y;
-
   let flowerSize = 100; // Approximate original size of the flower image
-  let scaleFactor = 0.15; // Same scale factor used in paintFlower()
+  let scaleFactor = 1; // Same scale factor used in paintFlower()
   let scaledFlowerRadius = (flowerSize * scaleFactor) / 2;
-  let edge = floor(random(4));
+  let maxRetries = 10; // Prevent infinite loops
 
-  switch (edge) {
-    case 0: // Top edge
-      x = random(scaledFlowerRadius, width - scaledFlowerRadius);
-      y = scaledFlowerRadius + 30;
-      break;
-    case 1: // Bottom edge
-      x = random(scaledFlowerRadius, width - scaledFlowerRadius);
-      y = height - 45;
-      break;
-    case 2: // Left edge
-      x = scaledFlowerRadius + 30;
-      y = random(scaledFlowerRadius, height - scaledFlowerRadius);
-      break;
-    case 3: // Right edge
-      x = width - scaledFlowerRadius - 25;
-      y = random(scaledFlowerRadius, height - scaledFlowerRadius);
-      break;
+  let x, y;
+  let validPosition = false;
+  let retryCount = 0;
+
+  while (!validPosition && retryCount < maxRetries) {
+    let edge = floor(random(4)); // Randomly select one of the four edges
+
+    // Determine the position based on the selected edge
+    switch (edge) {
+      case 0: // Top edge
+        x = random(scaledFlowerRadius, width - scaledFlowerRadius);
+        y = scaledFlowerRadius;
+        break;
+      case 1: // Bottom edge
+        x = random(scaledFlowerRadius, width - scaledFlowerRadius);
+        y = height - scaledFlowerRadius;
+        break;
+      case 2: // Left edge
+        x = scaledFlowerRadius;
+        y = random(scaledFlowerRadius, height - scaledFlowerRadius);
+        break;
+      case 3: // Right edge
+        x = width - scaledFlowerRadius;
+        y = random(scaledFlowerRadius, height - scaledFlowerRadius);
+        break;
+    }
+
+    // Check if the position is too close to an existing flower
+    validPosition = true;
+
+    for (let flower of flowers) {
+      let d = dist(x, y, flower.x, flower.y);
+      if (d < flowerSize * scaleFactor * 5) {
+        validPosition = false;
+        break;
+      }
+    }
+
+    retryCount++;
   }
 
-  let img = random(flowerImages); // Select a random flower image
+  if (!validPosition) {
+    console.log("Could not find a valid position for the new flower.");
+    return; // Exit if a valid spot isn't found
+  }
+
+  let img = random(flowerImages);
+
   // Ensure negativity is a boolean
   if (demoMode) {
-    negativity = flowerImages === negativeFlowers; // True if negative flowers are being spawned
+    negativity = flowerImages === negativeFlowers;
   } else {
     negativity = sentiment === "negative";
   }
 
+  // Add the flower to the array with an initial opacity of 255
   flowers.push({
     img,
     x,
     y,
-    negativity, // true for negative flowers, false otherwise
-    fadeProgress: 0, // Start with no fading
-    opacity: 255, // Fully visible initially
+    lifespan: 400,
+    negativity,
+    xs: [],
+    ys: [],
+    colors: [],
+    opacity: 255, // Initialize opacity
   });
 }
 
-function paintFlower(img, x, y, fadeProgress, opacity) {
+function paintFlower(flower, img, x, y) {
   flowerLayer.push();
 
-  let scaleFactor = 0.25 * (1 - fadeProgress * 0.5); // Gradually shrink the flower
-  let numSamples = 300; // Increase the number of pixels for a denser effect
+  // If the flower is not fading out, paint it as usual
+  let scaleFactor = 1; // Keep the scale factor constant for now
+  let numSamples = 400; // Number of points to sample
 
   for (let i = 0; i < numSamples; i++) {
     let sourceX = floor(random(0, img.width));
@@ -432,39 +527,11 @@ function paintFlower(img, x, y, fadeProgress, opacity) {
 
     // Only draw points for non-transparent pixels
     if (alpha(c) > 0) {
-      // Blend the color toward a darker brown with desaturation
-      console.log(fadeProgress);
-      if (fadeProgress > 0) {
-        let targetBrown = color(101, 67, 33); // Darker brown color
-        let r = lerp(red(c), red(targetBrown), fadeProgress); // Blend red channel
-        let g = lerp(green(c), green(targetBrown), fadeProgress); // Blend green channel
-        let b = lerp(blue(c), blue(targetBrown), fadeProgress); // Blend blue channel
-
-        // Add desaturation effect
-        let avg = (r + g + b) / 3; // Calculate average for desaturation
-        r = lerp(r, avg, fadeProgress * 0.5);
-        g = lerp(g, avg, fadeProgress * 0.5);
-        b = lerp(b, avg, fadeProgress * 0.5);
-
-        // Add random noise to simulate wilting
-        r += random(-10, 10) * fadeProgress;
-        g += random(-10, 10) * fadeProgress;
-        b += random(-10, 10) * fadeProgress;
-
-        // Clamp color values to valid ranges
-        r = constrain(r, 0, 255);
-        g = constrain(g, 0, 255);
-        b = constrain(b, 0, 255);
-
-        c = color(r, g, b, opacity); // Apply the blended color with opacity
-      }
-
       // Scale the position of the pixel
       let scaledX = x + (sourceX - img.width / 2) * scaleFactor + random(-1, 1); // Add slight randomness to position
       let scaledY =
         y + (sourceY - img.height / 2) * scaleFactor + random(-1, 1); // Add slight randomness to position
 
-      // Avoid clock area
       if (
         scaledX >= width - 200 &&
         scaledX <= width &&
@@ -474,9 +541,14 @@ function paintFlower(img, x, y, fadeProgress, opacity) {
         continue;
       }
 
+      // Store the point's x, y, and color in the flower object
+      flower.xs.push(scaledX);
+      flower.ys.push(scaledY);
+      flower.colors.push(c);
+
       // Draw the point
       flowerLayer.stroke(c);
-      flowerLayer.strokeWeight(random(2, 6)); // Randomize point size for a more natural look
+      flowerLayer.strokeWeight(random(1, 4)); // Randomize point size for a more natural look
       flowerLayer.point(scaledX, scaledY);
     }
   }
