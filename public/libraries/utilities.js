@@ -30,9 +30,9 @@ function createSettingsGui(params, { load, callback }) {
   // settings gui
   _paramGui = createGui("Sentiment Controls");
 
-  _paramGui.prototype.addButton("Save", function () {
-    storeItem("params", params);
-  });
+  // _paramGui.prototype.addButton("Save", function () {
+  //   storeItem("params", params);
+  // });
 
   // _paramGui.prototype.addButton("Reset", function () {
   //   for (const key in _defaultParams) {

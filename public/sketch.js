@@ -53,6 +53,48 @@ let buttercup,
   acacia,
   honeysuckle,
   pink_rose;
+const getStatus = { loading: false, error: false };
+
+let city = "Waterloo";
+let current = "Loading weather...";
+function getWeather(prov, cityCode) {
+  let src = `https://weather.gc.ca/rss/weather/43.472_-80.53_e.xml`;
+
+  getStatus.loading = true;
+
+  loadXML(
+    src,
+    (xml) => {
+      print("👍 success");
+
+      // get city name
+      city = xml.getChild("title").getContent().split(" - ")[0].trim();
+      print(`'${city}'`);
+
+      // find current forecast
+      // (I figured this out by looking at the raw XML in a web browser)
+      let entries = xml.getChildren("entry");
+
+      for (let x of entries) {
+        let entryTitle = x.getChild("title").getContent();
+
+        let t = entryTitle.split(":");
+        if (t[0].startsWith("Current Conditions")) {
+          print(t[1]);
+          current = t[1];
+        }
+      }
+      getStatus.result = true;
+      getStatus.loading = false;
+    },
+    (e) => {
+      // print(`error '${e}'`);
+      print(`❌ invalid city code? ${cityCode}`);
+      getStatus.result = false;
+      getStatus.loading = false;
+    }
+  );
+}
 
 let positiveFlowers, negativeFlowers;
 soundFile = new p5.SoundFile();
@@ -157,6 +199,11 @@ function setup() {
   createSettingsGui(params, { callback: paramChanged, load: false });
 
   _paramGui.show(); // since by default it's demo mode
+  // fetchWeather(); // Fetch the weather data
+  // setInterval(fetchWeather, 600000); // Refresh weather data every 10 minutes
+  setInterval(getWeather("on", 53), 60000);
+
+  // setInterval(getWeatherForWaterloo, 600000); // Refresh every 10 minutes
 
   if (!localStorage.getItem("liveMode")) {
     toggleButton = createButton("Turn Off Demo");
@@ -221,7 +268,6 @@ function setup() {
 function draw() {
   image(video, 0, 0, width, height);
   // background(220); // only need it when video is disabled
-  displayClock();
   // noFill();
   // stroke(255, 0, 0);
   // rect(width - 200, 0, 200, 120); // Adjust these values to match the clock area
@@ -378,46 +424,6 @@ function clearLiveMode() {
   console.log("liveMode cleared from localStorage");
 }
 
-function displayClock() {
-  let now = new Date();
-
-  // Get the current time
-  let hours = now.getHours();
-  let minutes = now.getMinutes();
-  let seconds = now.getSeconds();
-
-  // Get the current date
-  let year = now.getFullYear();
-  let month = nf(now.getMonth() + 1, 2);
-  let day = nf(now.getDate(), 2);
-
-  // Get the current day of the week
-  let daysOfWeek = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
-  let dayOfWeek = daysOfWeek[now.getDay()];
-
-  let timeString = nf(hours, 2) + ":" + nf(minutes, 2) + ":" + nf(seconds, 2);
-
-  let dateString = year + "-" + month + "-" + day;
-  noStroke();
-  textSize(45);
-  fill(0);
-  textAlign(RIGHT, TOP);
-  text(timeString, width - 10, 10);
-  textSize(25);
-  text(dayOfWeek, width - 10, 60);
-
-  textSize(20);
-  text(dateString, width - 10, 95);
-}
-
 function paintRandomFlowerOnEdges() {
   flowers = [];
 
@@ -437,6 +443,7 @@ function paintRandomFlowerOnEdges() {
     }
   }
 }
+const s = 30;
 
 function spawnFlowerOnEdge(flowerImages) {
   let flowerSize = 100; // Approximate original size of the flower image
