@@ -6,19 +6,16 @@ function paintRandomFlowerOnEdges() {
     for (let i = 0; i < params.positivityIntensity; i++) {
       spawnFlowerOnEdge(positiveFlowers);
     }
-    for (let i = 0; i < params.negativityIntensity; i++) {
-      spawnFlowerOnEdge(negativeFlowers);
-    }
+    // for (let i = 0; i < params.negativityIntensity; i++) {
+    //   spawnFlowerOnEdge(negativeFlowers);
+    // }
   } else {
     if (sentiment === "positive") {
       spawnFlowerOnEdge(positiveFlowers);
-    } else if (sentiment === "negative") {
-      spawnFlowerOnEdge(negativeFlowers);
-      let numCracks = floor(map(params.negativityIntensity, 0, 10, 1, 5));
-      for (let i = 0; i < numCracks; i++) {
-        addCrack();
-      }
     }
+    // } else if (sentiment === "negative") {
+    //   spawnFlowerOnEdge(negativeFlowers);
+    // }
   }
 }
 

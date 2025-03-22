@@ -8,9 +8,10 @@ let rules = [
   { a: "X", b: "F+[[X]-X]-F[-FX]+X" },
   { a: "F", b: "FF" },
 ];
+let predictions = [];
 let silenceTimer;
 let flowers = [];
-let flowerLayer;
+let flowerLayer, crackLayer;
 // Speech recognition
 let mic, recorder, soundFile, video, amplitude;
 let recording = false;
@@ -19,7 +20,7 @@ let stopTimer, stopTimerStart;
 let delayTime = 30000;
 
 let cooldownTimer;
-let cooldownTime = 300000; // 5 minutes in milliseconds
+let cooldownTime = 300000;
 let isOnCooldown = false;
 let sentiment = "neutral";
 let negativity;
@@ -30,6 +31,10 @@ let params = {
   positivityIntensityMax: 10,
   negativityIntensityMax: 10,
 };
+let lastNegativity = 0;
+let lastDemoIntensity = 0; // Track the last intensity value in demoMode
+let handpose;
+let hand;
 let prevPositivityIntensity = 0;
 let prevNegativityIntensity = 0;
 let gui;
@@ -145,17 +150,34 @@ function preload() {
     thistle,
     thorn_apple,
   ];
+
+  handpose = ml5.handPose(
+    // model options
+    {
+      flipped: true, // mirror the predictions to match video
+      maxHands: 1,
+      modelType: "full",
+    },
+    // callback when loaded
+    () => {
+      console.log("🚀 model loaded");
+    }
+  );
 }
 let cracks = []; // Array to store cracks
-
+let selectedFlower;
 function setup() {
   clearLiveMode();
 
   createCanvas(windowWidth, windowHeight);
-  video = createCapture(VIDEO);
+  video = createCapture(VIDEO, { flipped: true });
+
   video.size(windowWidth, windowHeight);
+
   video.hide();
   flowerLayer = createGraphics(windowWidth, windowHeight);
+  crackLayer = createGraphics(windowWidth, windowHeight); // Cracks layer
+
   createSettingsGui(params, { callback: paramChanged, load: false });
 
   _paramGui.show(); // since by default it's demo mode
@@ -187,6 +209,9 @@ function setup() {
     });
   }
 
+  handpose.detectStart(video, (results) => {
+    predictions = results; // Store predictions globally
+  });
   mic = new p5.AudioIn();
 
   recorder = new p5.SoundRecorder();
@@ -210,7 +235,7 @@ function setup() {
       paintRandomFlowerOnEdges();
 
       if (data.sentiment === "negative") {
-        addCrack();
+        addCrack(1);
       } else if (data.sentiment === "positive") {
         repairCrack();
       }
@@ -228,46 +253,66 @@ function setup() {
 
 function draw() {
   image(video, 0, 0, width, height);
-  // background(220); // only need it when video is disabled
-  // noFill();
-  // stroke(255, 0, 0);
-  // rect(width - 200, 0, 200, 120); // Adjust these values to match the clock area
 
   image(flowerLayer, 0, 0);
+  image(crackLayer, 0, 0);
+
+  drawCracks(); // Render cracks
 
   for (let i = flowers.length - 1; i >= 0; i--) {
     let flower = flowers[i];
-
-    // Draw the flower with its current fade progress and opacity
     paintFlower(flower, flower.img, flower.x, flower.y);
+  }
 
-    // if (flower.negativity) {
-    //   // Decrease lifespan if it is greater than 0
-    //   if (flower.lifespan > 0) {
-    //     flower.lifespan--;
-    //     continue; // Skip erasing logic until lifespan reaches 0
-    //   }
-    //   console.log(flower.lifespan);
-    //   // Start erasing the flower after its lifespan ends
-    //   for (let j = 0; j < flower.xs.length; j++) {
-    //     if (Math.random() < 0.1) {
-    //       // Control the erasing speed (adjust 0.1)
-    //       flowerLayer.erase();
-    //       flowerLayer.stroke(255);
-    //       flowerLayer.strokeWeight(5);
-    //       flowerLayer.point(flower.xs[j], flower.ys[j]);
-    //       flowerLayer.noErase();
-    //     }
-    //   }
+  if (demoMode) {
+    // Extend cracks only if negativityIntensity has changed
+    if (params.negativityIntensity !== lastDemoIntensity) {
+      addCrack(params.negativityIntensity);
+      lastDemoIntensity = params.negativityIntensity; // Update the last intensity
+    }
+  }
 
-    //   // Gradually reduce the flower's overall opacity
-    //   flower.opacity = max(flower.opacity - 1, 0); // Adjust the reduction speed (adjust 1)
+  hand = predictions[0];
+  // drawKeypoints(hand, 8);
+  // Check for hand predictions
+  if (predictions.length > 0) {
+    let hand = predictions[0]; // Get the first detected hand
+    let indexFinger = hand.keypoints[8]; // Index finger tip
+    let indexX = indexFinger.x;
+    let indexY = indexFinger.y;
 
-    //   // Remove the flower from the array if fully erased
-    //   if (flower.opacity <= 0) {
-    //     flowers.splice(i, 1);
-    //   }
-    // }
+    // Draw the index finger position for debugging
+    fill(255, 0, 0); // Red color for debugging
+    noStroke();
+    circle(indexX, indexY, 20); // Draw a circle at the index finger position
+
+    // Check if the index finger is over a flower
+    for (let flower of flowers) {
+      let distance = dist(indexX, indexY, flower.x, flower.y);
+      console.log("distance", distance);
+      if (
+        distance < 50 // Adjust this threshold based on flower size
+      ) {
+        selectedFlower = flower; // Select the flower
+        break;
+      } else {
+        selectedFlower = null;
+      }
+    }
+
+    // Move the selected flower
+    if (selectedFlower) {
+      selectedFlower.x = indexX; // Update flower's x position
+      selectedFlower.y = indexY; // Update flower's y position
+
+      // Clear the flower layer and draw the selected flower at the new position
+      flowerLayer.clear();
+      image(
+        selectedFlower.img,
+        selectedFlower.x - selectedFlower.img.width / 2,
+        selectedFlower.y - selectedFlower.img.height / 2
+      );
+    }
   }
 
   // Check if GUI values have change
@@ -386,6 +431,46 @@ function clearLiveMode() {
 }
 
 function paramChanged() {
+  if (params.negativityIntensity > lastNegativity) {
+    let delta = params.negativityIntensity - lastNegativity; // How much it increased
+    growCracks(delta);
+  }
+
+  // Draw all cracks
+  for (let c of cracks) {
+    c.show();
+  }
+
+  // Update lastNegativity for next frame
+  lastNegativity = params.negativityIntensity;
   flowerLayer.clear();
   paintRandomFlowerOnEdges();
+}
+
+function drawCracks() {
+  crackLayer.clear(); // Clear the crackLayer before redrawing
+
+  for (let crack of cracks) {
+    crack.show(crackLayer); // Render each crack
+  }
+}
+const colours = [
+  "Red",
+  "OrangeRed",
+  "Gold",
+  "Lime",
+  "Turquoise",
+  "DodgerBlue",
+  "Blue",
+  "DarkMagenta",
+];
+
+// Draw dots for all detected landmarks
+function drawKeypoints(hand, i) {
+  const c = color(colours[i % colours.length]);
+  fill(c);
+  noStroke();
+  if (hand) {
+    circle(hand.keypoints[i].x, hand.keypoints[i].y, 20);
+  }
 }
