@@ -23,7 +23,19 @@ print("Transcription:", conversation_text)
 ollama_api_url = "http://localhost:1122/api/generate"
 # prompt = f"Classify the sentiment of this conversation as either 'positive', 'neutral', or 'negative'. Respond with only one of these words and nothing else with no explanation: '{conversation_text}'"
 
-prompt = f"Classify the sentiment of the conversation. Determine if it is positive, neutral, or negative, and return the answer as  the corresponding sentiment label 'positive' or 'neutral' or 'negative' with no explanation. Here is the conversation: {conversation_text}"
+
+def generate_prompt(conversation_text):
+    return f"""
+    Classify the sentiment of the conversation. Determine if it is positive, neutral, or negative, and return the answer as the corresponding sentiment label: 'positive', 'neutral', or 'negative' with no explanation. 
+    Additionally, based on the intensity of the sentiment, return the appropriate number of flowers (an integer from 0 to 10), where 0 represents no strong sentiment and 10 represents extreme positivity or negativity. 
+    Format your response as: 
+    "Sentiment: [positive/neutral/negative], Flowers: [integer]"
+
+    Here is the conversation: {conversation_text}
+    """
+
+
+prompt = generate_prompt(conversation_text)
 
 try:
     response = requests.post(
