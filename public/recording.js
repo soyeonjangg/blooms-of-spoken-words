@@ -1,5 +1,7 @@
 function startRecording() {
   if (mic.enabled && !recording) {
+    soundFile = new p5.SoundFile();
+
     console.log("Recording started...");
     recording = true;
     recorder.record(soundFile);
@@ -44,7 +46,6 @@ async function waitForSoundFileToLoad(soundFile, maxWaitTime = 50000) {
   let waited = 0;
   console.log("Waiting for sound file to load...");
   while (!soundFile.isLoaded()) {
-    console.log("waiting?");
     if (waited >= maxWaitTime) {
       throw new Error("Sound file did not load in time");
     }
@@ -57,7 +58,7 @@ async function waitForSoundFileToLoad(soundFile, maxWaitTime = 50000) {
 function sendAudioToServer(blob) {
   let formData = new FormData();
   formData.append("audio", blob, "audio.wav");
-
+  console.log("Sent auido to server..");
   fetch("http://localhost:3000/transcribe", {
     method: "POST",
     body: formData,
