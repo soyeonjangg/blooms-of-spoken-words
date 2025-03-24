@@ -2,37 +2,40 @@ function paintRandomFlowerOnEdges() {
   flowers = [];
 
   if (demoMode) {
-    // Spawn flowers based on intensity values
+    console.log(
+      `Demo Mode: Painting ${params.positivityIntensity} positive flowers and ${params.negativityIntensity} flowers.`
+    );
+
     for (let i = 0; i < params.positivityIntensity; i++) {
       spawnFlowerOnEdge(positiveFlowers);
     }
-    // for (let i = 0; i < params.negativityIntensity; i++) {
-    //   spawnFlowerOnEdge(negativeFlowers);
-    // }
+
+    for (let j = 0; j < params.negativityIntensity; j++) {
+      spawnFlowerOnEdge(negativeFlowers);
+    }
   } else {
+    console.log(`Received ${sentiment} sentiment. Painting..`);
     if (sentiment === "positive") {
       spawnFlowerOnEdge(positiveFlowers);
+    } else if (sentiment === "negative") {
+      spawnFlowerOnEdge(negativeFlowers);
     }
-    // } else if (sentiment === "negative") {
-    //   spawnFlowerOnEdge(negativeFlowers);
-    // }
   }
 }
 
 function spawnFlowerOnEdge(flowerImages) {
-  let flowerSize = 100; // Approximate original size of the flower image
-  let scaleFactor = 1; // Same scale factor used in paintFlower()
+  let flowerSize = 100;
+  let scaleFactor = 1;
   let scaledFlowerRadius = (flowerSize * scaleFactor) / 2;
-  let maxRetries = 10; // Prevent infinite loops
+  let maxRetries = 10;
 
   let x, y;
   let validPosition = false;
   let retryCount = 0;
 
   while (!validPosition && retryCount < maxRetries) {
-    let edge = floor(random(4)); // Randomly select one of the four edges
+    let edge = floor(random(4));
 
-    // Determine the position based on the selected edge
     switch (edge) {
       case 0: // Top edge
         x = random(scaledFlowerRadius, width - scaledFlowerRadius);
@@ -52,12 +55,11 @@ function spawnFlowerOnEdge(flowerImages) {
         break;
     }
 
-    // Check if the position is too close to an existing flower
     validPosition = true;
 
     for (let flower of flowers) {
       let d = dist(x, y, flower.x, flower.y);
-      if (d < flowerSize * scaleFactor * 5) {
+      if (d < 200) {
         validPosition = false;
         break;
       }
@@ -68,19 +70,16 @@ function spawnFlowerOnEdge(flowerImages) {
 
   if (!validPosition) {
     console.log("Could not find a valid position for the new flower.");
-    return; // Exit if a valid spot isn't found
+    return;
   }
 
   let img = random(flowerImages);
 
-  // Ensure negativity is a boolean
   if (demoMode) {
     negativity = flowerImages === negativeFlowers;
   } else {
     negativity = sentiment === "negative";
   }
-
-  // Add the flower to the array with an initial opacity of 255
   flowers.push({
     img,
     x,
@@ -93,34 +92,53 @@ function spawnFlowerOnEdge(flowerImages) {
     opacity: 255, // Initialize opacity
   });
 }
-
 function paintFlower(flower, img, x, y) {
   flowerLayer.push();
 
-  let scaleFactor = 1; // Keep the scale factor constant for now
-  let numSamples = 400; // Number of points to sample
+  let scaleFactor = 1;
+  let numSamples = 400;
 
-  for (let i = 0; i < numSamples; i++) {
-    let sourceX = floor(random(0, img.width));
-    let sourceY = floor(random(0, img.height));
-    let c = img.get(sourceX, sourceY); // Get the color of the pixel
+  let delay = 6000;
+  if (!flower.spawnTime) {
+    flower.spawnTime = millis();
+  }
 
-    // Only draw points for non-transparent pixels
-    if (alpha(c) > 0) {
-      // Scale the position of the pixel
-      let scaledX = x + (sourceX - img.width / 2) * scaleFactor + random(-1, 1); // Add slight randomness to position
-      let scaledY =
-        y + (sourceY - img.height / 2) * scaleFactor + random(-1, 1); // Add slight randomness to position
+  let elapsedTime = millis() - flower.spawnTime;
 
-      // Store the point's x, y, and color in the flower object
-      flower.xs.push(scaledX);
-      flower.ys.push(scaledY);
-      flower.colors.push(c);
+  if (elapsedTime <= delay) {
+    let alpha = map(elapsedTime, 0, delay, 255, 0); // Gradually reduce alpha from 128 to 0
+    tint(255, alpha); // Apply dynamic transparency
+    image(
+      flower.img,
+      flower.x - flower.img.width / 2,
+      flower.y - flower.img.height / 2
+    );
+  }
+  if (millis() - flower.spawnTime > delay) {
+    noTint();
+    for (let i = 0; i < numSamples; i++) {
+      let sourceX = floor(random(0, img.width));
+      let sourceY = floor(random(0, img.height));
+      let c = img.get(sourceX, sourceY);
 
-      // Draw the point
-      flowerLayer.stroke(c);
-      flowerLayer.strokeWeight(random(1, 4));
-      flowerLayer.point(scaledX, scaledY);
+      if (alpha(c) > 0) {
+        let scaledX =
+          x + (sourceX - img.width / 2) * scaleFactor + random(-1, 1);
+        let scaledY =
+          y + (sourceY - img.height / 2) * scaleFactor + random(-1, 1);
+
+        flower.xs.push(scaledX);
+        flower.ys.push(scaledY);
+        flower.colors.push(c);
+        if (flower.negativity) {
+          let gray = random(0, 255); // Generate a random grayscale value
+          c = color(gray, gray, gray); // Create a grayscale color
+        }
+        // Draw the point
+        flowerLayer.stroke(c);
+        flowerLayer.strokeWeight(random(1, 4));
+        flowerLayer.point(scaledX, scaledY);
+      }
     }
   }
 

@@ -1,23 +1,14 @@
-// https://youtu.be/Y3UfVRQ3S_8?si=BhY5OZYGQHZvMeUV
-
-let axiom = "-X";
-let sentence = axiom;
-let len;
-let angle;
-let rules = [
-  { a: "X", b: "F+[[X]-X]-F[-FX]+X" },
-  { a: "F", b: "FF" },
-];
 let predictions = [];
 let silenceTimer;
 let flowers = [];
 let flowerLayer, crackLayer;
-// Speech recognition
+
 let mic, recorder, soundFile, video, amplitude;
 let recording = false;
 let threshold = 0.05;
 let stopTimer, stopTimerStart;
 let delayTime = 30000;
+let selectedFlower;
 
 let cooldownTimer;
 let cooldownTime = 300000;
@@ -25,20 +16,21 @@ let isOnCooldown = false;
 let sentiment = "neutral";
 let negativity;
 let plantCol = [0, 255, 0, 150];
+
 let params = {
   positivityIntensity: 0,
   negativityIntensity: 0,
-  positivityIntensityMax: 10,
-  negativityIntensityMax: 10,
+  positivityIntensityMax: 15,
+  negativityIntensityMax: 15,
 };
-let lastNegativity = 0;
-let lastDemoIntensity = 0; // Track the last intensity value in demoMode
+let lastDemoIntensity = 0;
 let handpose;
 let hand;
 let prevPositivityIntensity = 0;
 let prevNegativityIntensity = 0;
 let gui;
 let toggleButton;
+
 const socket = io();
 let demoMode = true;
 let buttercup,
@@ -58,12 +50,10 @@ let buttercup,
   acacia,
   honeysuckle,
   pink_rose;
-const getStatus = { loading: false, error: false };
 
 let positiveFlowers, negativeFlowers;
 soundFile = new p5.SoundFile();
 function preload() {
-  // Define the desired size for all images
   let targetWidth = 200; // Set the desired width
   let targetHeight = 200; // Set the desired height
 
@@ -164,8 +154,7 @@ function preload() {
     }
   );
 }
-let cracks = []; // Array to store cracks
-let selectedFlower;
+
 function setup() {
   clearLiveMode();
 
@@ -176,11 +165,10 @@ function setup() {
 
   video.hide();
   flowerLayer = createGraphics(windowWidth, windowHeight);
-  crackLayer = createGraphics(windowWidth, windowHeight); // Cracks layer
 
   createSettingsGui(params, { callback: paramChanged, load: false });
 
-  _paramGui.show(); // since by default it's demo mode
+  _paramGui.show();
 
   if (!localStorage.getItem("liveMode")) {
     toggleButton = createButton("Turn Off Demo");
@@ -255,38 +243,27 @@ function draw() {
   image(video, 0, 0, width, height);
 
   image(flowerLayer, 0, 0);
-  image(crackLayer, 0, 0);
-
-  drawCracks(); // Render cracks
 
   for (let i = flowers.length - 1; i >= 0; i--) {
     let flower = flowers[i];
     paintFlower(flower, flower.img, flower.x, flower.y);
   }
 
-  if (demoMode) {
-    // Extend cracks only if negativityIntensity has changed
-    if (params.negativityIntensity !== lastDemoIntensity) {
-      addCrack(params.negativityIntensity);
-      lastDemoIntensity = params.negativityIntensity; // Update the last intensity
-    }
-  }
-
   hand = predictions[0];
-  // drawKeypoints(hand, 8);
-  // Check for hand predictions
+
   if (predictions.length > 0) {
-    let hand = predictions[0]; // Get the first detected hand
-    let indexFinger = hand.keypoints[8]; // Index finger tip
+    let hand = predictions[0]; // first hand detection
+    let indexFinger = hand.keypoints[8]; // index finger tip
+    let thumb = hand.keypoints[4];
+    let middleFinger = hand.keypoints[12];
+
     let indexX = indexFinger.x;
     let indexY = indexFinger.y;
 
-    // Draw the index finger position for debugging
-    fill(255, 0, 0); // Red color for debugging
+    fill(255, 0, 0);
     noStroke();
-    circle(indexX, indexY, 20); // Draw a circle at the index finger position
+    circle(indexX, indexY, 20);
 
-    // Check if the index finger is over a flower
     for (let flower of flowers) {
       let distance = dist(indexX, indexY, flower.x, flower.y);
       console.log("distance", distance);
@@ -300,12 +277,10 @@ function draw() {
       }
     }
 
-    // Move the selected flower
     if (selectedFlower) {
       selectedFlower.x = indexX; // Update flower's x position
       selectedFlower.y = indexY; // Update flower's y position
 
-      // Clear the flower layer and draw the selected flower at the new position
       flowerLayer.clear();
       image(
         selectedFlower.img,
@@ -315,19 +290,16 @@ function draw() {
     }
   }
 
-  // Check if GUI values have change
   if (mic) {
     let vol = amplitude.getLevel();
 
     if (vol >= threshold) {
       if (!recording && !isOnCooldown) {
-        // Start recording if not already recording and not on cooldown
         startRecording();
         console.log("Recording started because volume >= threshold:", vol);
       }
 
       if (recording) {
-        // Reset the silence timer if people are still talking
         clearTimeout(silenceTimer);
         silenceTimer = null;
         console.log(
@@ -336,89 +308,10 @@ function draw() {
         );
       }
     } else if (vol < threshold && recording && !silenceTimer) {
-      // Start the silence timer if volume is below the threshold
       console.log("Starting silence timer because volume < threshold:", vol);
-      silenceTimer = setTimeout(stopRecording, 20000); // Stop recording after 20 seconds of silence
+      silenceTimer = setTimeout(stopRecording, 20000);
     }
   }
-}
-
-function startRecording() {
-  if (mic.enabled && !recording) {
-    console.log("Recording started...");
-    recording = true;
-    recorder.record(soundFile);
-    isOnCooldown = true;
-
-    soundFile.onended(stopRecording);
-  } else {
-    console.error("Microphone not enabled yet!");
-  }
-}
-
-async function stopRecording() {
-  console.log("should stop?");
-
-  if (recorder && soundFile) {
-    recording = false;
-    recorder.stop();
-    console.log("Stopped recording");
-
-    try {
-      await waitForSoundFileToLoad(soundFile);
-      console.log("Sound file ready");
-      sendAudioToServer(soundFile.getBlob());
-
-      isOnCooldown = true;
-      console.log("Cooldown started");
-      silenceTimer = null;
-      setTimeout(() => {
-        isOnCooldown = false;
-        console.log("Cooldown period ended");
-      }, cooldownTime);
-    } catch (err) {
-      console.error("Error getting blob:", err);
-    }
-  } else {
-    console.error("Recorder or SoundFile not initialized");
-  }
-}
-
-async function waitForSoundFileToLoad(soundFile, maxWaitTime = 50000) {
-  const interval = 100; // Check every 100ms
-  let waited = 0;
-  console.log("Waiting for sound file to load...");
-  while (!soundFile.isLoaded()) {
-    console.log("waiting?");
-    if (waited >= maxWaitTime) {
-      throw new Error("Sound file did not load in time");
-    }
-    await new Promise((resolve) => setTimeout(resolve, interval));
-    waited += interval;
-    console.log(waited);
-  }
-}
-
-function sendAudioToServer(blob) {
-  let formData = new FormData();
-  formData.append("audio", blob, "audio.wav");
-
-  fetch("http://localhost:3000/transcribe", {
-    method: "POST",
-    body: formData,
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      console.log("Transcription:", data.text);
-      displayTranscription(data.text);
-    })
-    .catch((error) => console.error("Error:", error));
-}
-
-function displayTranscription(text) {
-  let output = document.createElement("p");
-  output.textContent = text;
-  document.body.appendChild(output);
 }
 
 function windowResized() {
@@ -431,29 +324,10 @@ function clearLiveMode() {
 }
 
 function paramChanged() {
-  if (params.negativityIntensity > lastNegativity) {
-    let delta = params.negativityIntensity - lastNegativity; // How much it increased
-    growCracks(delta);
-  }
-
-  // Draw all cracks
-  for (let c of cracks) {
-    c.show();
-  }
-
-  // Update lastNegativity for next frame
-  lastNegativity = params.negativityIntensity;
   flowerLayer.clear();
   paintRandomFlowerOnEdges();
 }
 
-function drawCracks() {
-  crackLayer.clear(); // Clear the crackLayer before redrawing
-
-  for (let crack of cracks) {
-    crack.show(crackLayer); // Render each crack
-  }
-}
 const colours = [
   "Red",
   "OrangeRed",
@@ -465,7 +339,6 @@ const colours = [
   "DarkMagenta",
 ];
 
-// Draw dots for all detected landmarks
 function drawKeypoints(hand, i) {
   const c = color(colours[i % colours.length]);
   fill(c);
