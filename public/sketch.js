@@ -2,17 +2,15 @@ let predictions = [];
 let silenceTimer;
 let flowers = [];
 let flowerLayer, crackLayer;
+let isProcessing = false; // Track whether the system is waiting for sentiment
 
 let mic, recorder, soundFile, video, amplitude;
 let recording = false;
-let threshold = 0.05;
+let threshold = 0.004;
 let stopTimer, stopTimerStart;
 let delayTime = 30000;
 let selectedFlower;
 
-let cooldownTimer;
-let cooldownTime = 300000;
-let isOnCooldown = false;
 let sentiment = "neutral";
 let negativity;
 let plantCol = [0, 255, 0, 150];
@@ -30,7 +28,7 @@ let prevPositivityIntensity = 0;
 let prevNegativityIntensity = 0;
 let gui;
 let toggleButton;
-
+let blocks = [];
 const socket = io();
 let demoMode = true;
 let buttercup,
@@ -52,10 +50,9 @@ let buttercup,
   pink_rose;
 
 let positiveFlowers, negativeFlowers;
-soundFile = new p5.SoundFile();
 function preload() {
-  let targetWidth = 200; // Set the desired width
-  let targetHeight = 200; // Set the desired height
+  let targetWidth = 150; // Set the desired width
+  let targetHeight = 150; // Set the desired height
 
   // negative flowers
   buttercup = loadImage("flowers/negative/buttercup.png", (img) =>
@@ -97,9 +94,7 @@ function preload() {
     "flowers/positive/lily_of_the_valley.png",
     (img) => img.resize(targetWidth, targetHeight)
   );
-  myrtle = loadImage("flowers/positive/myrtle.png", (img) =>
-    img.resize(targetWidth, targetHeight)
-  );
+
   pink_rose = loadImage("flowers/positive/pink_rose.png", (img) =>
     img.resize(targetWidth, targetHeight)
   );
@@ -124,7 +119,6 @@ function preload() {
     honeysuckle,
     ivy,
     lily_of_the_valley,
-    myrtle,
     pink_rose,
     rose_mary,
     snowdrop,
@@ -142,9 +136,8 @@ function preload() {
   ];
 
   handpose = ml5.handPose(
-    // model options
     {
-      flipped: true, // mirror the predictions to match video
+      flipped: true,
       maxHands: 1,
       modelType: "full",
     },
@@ -157,6 +150,7 @@ function preload() {
 
 function setup() {
   clearLiveMode();
+  soundFile = new p5.SoundFile();
 
   createCanvas(windowWidth, windowHeight);
   video = createCapture(VIDEO, { flipped: true });
@@ -216,18 +210,33 @@ function setup() {
   }
 
   socket.on("sentiment", (data) => {
-    if (data.sentiment) {
-      sentiment = `Sentiment: ${data.sentiment}`;
-      console.log("Updated sentiment:", sentiment);
+    console.log(`DATA: ${data.sentiment}`);
+    if (data) {
+      sentiment = data.sentiment;
+      numFlower = data.numFlower;
 
       paintRandomFlowerOnEdges();
 
-      if (data.sentiment === "negative") {
-        addCrack(1);
-      } else if (data.sentiment === "positive") {
-        repairCrack();
+      if (sentiment === "negative") {
+        let numPixels = numFlower;
+        let pixelSize = 15;
+        for (let i = 0; i < numPixels; i++) {
+          let x = random(width);
+          let y = random(height);
+          blocks.push({ x, y, size: pixelSize });
+        }
+      } else if (sentiment === "positive") {
+        for (let i = 0; i < numFlower; i++) {
+          if (blocks.length > 0) {
+            let randomIndex = floor(random(blocks.length));
+            blocks.splice(randomIndex, 1);
+          }
+        }
       }
     }
+
+    isProcessing = false;
+    console.log("Ready for the next recording..");
   });
 
   socket.on("connect", () => {
@@ -290,11 +299,11 @@ function draw() {
     }
   }
 
-  if (mic) {
+  if (mic && !demoMode) {
     let vol = amplitude.getLevel();
 
     if (vol >= threshold) {
-      if (!recording && !isOnCooldown) {
+      if (!recording && !isProcessing) {
         startRecording();
         console.log("Recording started because volume >= threshold:", vol);
       }
@@ -324,8 +333,46 @@ function clearLiveMode() {
 }
 
 function paramChanged() {
-  flowerLayer.clear();
+  if (params.negativityIntensity !== prevNegativityIntensity) {
+    console.log(
+      "Negativity intensity changed:",
+      prevNegativityIntensity,
+      "->",
+      params.negativityIntensity
+    );
+    prevNegativityIntensity = params.negativityIntensity;
+  } else if (params.negativityIntensity === prevNegativityIntensity) {
+    prevNegativityIntensity =
+      params.negativityIntensity - prevNegativityIntensity;
+  }
+
+  // Update positivity intensity
+  if (params.positivityIntensity !== prevPositivityIntensity) {
+    console.log(
+      "Positivity intensity changed:",
+      prevPositivityIntensity,
+      "->",
+      params.positivityIntensity
+    );
+    prevPositivityIntensity = params.positivityIntensity;
+  } else if (prevPositivityIntensity === params.positivityIntensity) {
+    prevPositivityIntensity =
+      params.positivityIntensity - prevPositivityIntensity;
+  }
+
   paintRandomFlowerOnEdges();
+
+  if (params.negativityIntensity > 0) {
+    let numPixels = 10; // Number of black squares to add per frame
+    let pixelSize = 15; // Size of each square
+    for (let i = 0; i < numPixels; i++) {
+      let x = random(width); // Random x position
+      let y = random(height); // Random y position
+      fill(0); // Set color to black
+      noStroke(); // Remove stroke
+      rect(x, y, pixelSize, pixelSize); // Draw a black square
+    }
+  }
 }
 
 const colours = [
