@@ -5,6 +5,7 @@ import sys
 from faster_whisper import WhisperModel
 import numpy as np
 import requests
+import json
 
 if len(sys.argv) < 2:
     print("Usage: python process_audio.py <file_path>")
@@ -46,21 +47,31 @@ try:
         sentiment_analysis = response.json().get("response", "Error in response")
         sentiment_analysis = sentiment_analysis.lower()
 
-        print("Sentiment Analysis:", sentiment_analysis)
+        if "sentiment:" in sentiment_analysis and "flowers:" in sentiment_analysis:
+            parts = sentiment_analysis.split(",")
+            sentiment = parts[0].split(":")[1].strip()
+            num_flower = int(parts[1].split(":")[1].strip())
 
-        # Send the sentiment back to the server
-        server_url = (
-            "http://localhost:3000/sentiment"  # Replace with your server's endpoint
-        )
-        server_response = requests.post(
-            server_url,
-            json={"sentiment": sentiment_analysis},
-            headers={"Content-Type": "application/json"},  # Ensure correct content type
-        )
-        if server_response.status_code == 200:
-            print("Sentiment successfully sent to the server.")
+            # result = [sentiment, num_flower]
+            # result = json.dumps(result)
+            result = {"sentiment": sentiment, "numFlower": num_flower}
+            result = json.dumps(result)
+            print("Sentiment Analysis Result:", result)
+
+            server_url = (
+                "http://localhost:3000/sentiment"  # Replace with your server's endpoint
+            )
+            server_response = requests.post(
+                server_url,
+                json={"sentiment": result},
+                headers={"Content-Type": "application/json"},
+            )
+            if server_response.status_code == 200:
+                print("Sentiment successfully sent to the server.")
+            else:
+                print("Error sending sentiment to the server:", server_response.text)
         else:
-            print("Error sending sentiment to the server:", server_response.text)
+            print("Unexpected response format: ", sentiment_analysis)
     else:
         print("Error communicating with Ollama API:", response.text)
 

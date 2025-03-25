@@ -3,14 +3,14 @@ function paintRandomFlowerOnEdges() {
 
   if (demoMode) {
     console.log(
-      `Demo Mode: Painting ${params.positivityIntensity} positive flowers and ${params.negativityIntensity} flowers.`
+      `Demo Mode: Painting ${prevPositivityIntensity} positive flowers and ${params.negativityIntensity} flowers.`
     );
 
-    for (let i = 0; i < params.positivityIntensity; i++) {
+    for (let i = 0; i < prevPositivityIntensity; i++) {
       spawnFlowerOnEdge(positiveFlowers);
     }
 
-    for (let j = 0; j < params.negativityIntensity; j++) {
+    for (let j = 0; j < prevNegativityIntensity; j++) {
       spawnFlowerOnEdge(negativeFlowers);
     }
   } else {
@@ -92,6 +92,7 @@ function spawnFlowerOnEdge(flowerImages) {
     opacity: 255, // Initialize opacity
   });
 }
+
 function paintFlower(flower, img, x, y) {
   flowerLayer.push();
 
@@ -130,11 +131,10 @@ function paintFlower(flower, img, x, y) {
         flower.xs.push(scaledX);
         flower.ys.push(scaledY);
         flower.colors.push(c);
-        if (flower.negativity) {
-          let gray = random(0, 255); // Generate a random grayscale value
-          c = color(gray, gray, gray); // Create a grayscale color
-        }
-        // Draw the point
+        // if (flower.negativity) {
+        //   let gray = random(0, 255); // Generate a random grayscale value
+        //   c = color(gray, gray, gray); // Create a grayscale color
+        // }
         flowerLayer.stroke(c);
         flowerLayer.strokeWeight(random(1, 4));
         flowerLayer.point(scaledX, scaledY);

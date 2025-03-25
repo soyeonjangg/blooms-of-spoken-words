@@ -16,11 +16,16 @@ let negativity;
 let plantCol = [0, 255, 0, 150];
 
 let params = {
+  numNegativeSentiments: 0,
+  numNegativeSentimentsMax: 50,
+  numPositiveSentiments: 0,
+  numPositiveSentimentsMax: 50,
   positivityIntensity: 0,
   negativityIntensity: 0,
-  positivityIntensityMax: 15,
-  negativityIntensityMax: 15,
+  positivityIntensityMax: 10,
+  negativityIntensityMax: 10,
 };
+
 let lastDemoIntensity = 0;
 let handpose;
 let hand;
@@ -210,7 +215,7 @@ function setup() {
   }
 
   socket.on("sentiment", (data) => {
-    console.log(`DATA: ${data.sentiment}`);
+    console.log(`Sentiment: ${data.sentiment}, Intensity: ${data.numFlower}`);
     if (data) {
       sentiment = data.sentiment;
       numFlower = data.numFlower;
@@ -257,7 +262,11 @@ function draw() {
     let flower = flowers[i];
     paintFlower(flower, flower.img, flower.x, flower.y);
   }
-
+  for (let block of blocks) {
+    fill(0, 0, 0);
+    noStroke();
+    rect(block.x, block.y, block.size, block.size);
+  }
   hand = predictions[0];
 
   if (predictions.length > 0) {
@@ -276,10 +285,8 @@ function draw() {
     for (let flower of flowers) {
       let distance = dist(indexX, indexY, flower.x, flower.y);
       console.log("distance", distance);
-      if (
-        distance < 50 // Adjust this threshold based on flower size
-      ) {
-        selectedFlower = flower; // Select the flower
+      if (distance < 50) {
+        selectedFlower = flower;
         break;
       } else {
         selectedFlower = null;
@@ -287,8 +294,8 @@ function draw() {
     }
 
     if (selectedFlower) {
-      selectedFlower.x = indexX; // Update flower's x position
-      selectedFlower.y = indexY; // Update flower's y position
+      selectedFlower.x = indexX;
+      selectedFlower.y = indexY;
 
       flowerLayer.clear();
       image(
@@ -332,47 +339,52 @@ function clearLiveMode() {
   console.log("liveMode cleared from localStorage");
 }
 
+let numNegativity = 0;
+let numPositivity = 0;
 function paramChanged() {
-  if (params.negativityIntensity !== prevNegativityIntensity) {
-    console.log(
-      "Negativity intensity changed:",
-      prevNegativityIntensity,
-      "->",
-      params.negativityIntensity
-    );
-    prevNegativityIntensity = params.negativityIntensity;
-  } else if (params.negativityIntensity === prevNegativityIntensity) {
-    prevNegativityIntensity =
-      params.negativityIntensity - prevNegativityIntensity;
+  // Simulate positive sentiments
+  if (params.numPositiveSentiments > numPositivity) {
+    let diff = params.numPositiveSentiments - numPositivity;
+    for (let i = 0; i < diff; i++) {
+      spawnFlowerOnEdge(positiveFlowers);
+    }
+    numPositivity = params.numPositiveSentiments;
   }
 
-  // Update positivity intensity
-  if (params.positivityIntensity !== prevPositivityIntensity) {
-    console.log(
-      "Positivity intensity changed:",
-      prevPositivityIntensity,
-      "->",
-      params.positivityIntensity
-    );
-    prevPositivityIntensity = params.positivityIntensity;
-  } else if (prevPositivityIntensity === params.positivityIntensity) {
-    prevPositivityIntensity =
-      params.positivityIntensity - prevPositivityIntensity;
+  // Simulate negative sentiments
+  if (params.numNegativeSentiments > numNegativity) {
+    let diff = params.numNegativeSentiments - numNegativity;
+    for (let i = 0; i < diff; i++) {
+      spawnFlowerOnEdge(negativeFlowers);
+    }
+    numNegativity = params.numNegativeSentiments;
   }
 
-  paintRandomFlowerOnEdges();
-
-  if (params.negativityIntensity > 0) {
-    let numPixels = 10; // Number of black squares to add per frame
+  // Add black patches for negativity intensity
+  if (params.negativityIntensity > prevNegativityIntensity) {
+    let diff = params.negativityIntensity - prevNegativityIntensity;
+    let numPixels = diff; // Number of black squares to add
     let pixelSize = 15; // Size of each square
     for (let i = 0; i < numPixels; i++) {
-      let x = random(width); // Random x position
-      let y = random(height); // Random y position
-      fill(0); // Set color to black
-      noStroke(); // Remove stroke
-      rect(x, y, pixelSize, pixelSize); // Draw a black square
+      let x = random(width);
+      let y = random(height);
+      blocks.push({ x, y, size: pixelSize });
     }
   }
+
+  // Remove black patches for positivity intensity
+  if (params.positivityIntensity > prevPositivityIntensity) {
+    let diff = params.positivityIntensity - prevPositivityIntensity;
+    let numPixels = diff; // Number of black squares to remove
+    for (let i = 0; i < numPixels; i++) {
+      if (blocks.length > 0) {
+        blocks.pop(); // Remove the last block
+      }
+    }
+  }
+
+  prevNegativityIntensity = params.negativityIntensity;
+  prevPositivityIntensity = params.positivityIntensity;
 }
 
 const colours = [

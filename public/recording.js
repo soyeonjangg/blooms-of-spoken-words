@@ -5,7 +5,6 @@ function startRecording() {
     console.log("Recording started...");
     recording = true;
     recorder.record(soundFile);
-    isOnCooldown = true;
 
     soundFile.onended(stopRecording);
   } else {
@@ -25,14 +24,7 @@ async function stopRecording() {
       await waitForSoundFileToLoad(soundFile);
       console.log("Sound file ready");
       sendAudioToServer(soundFile.getBlob());
-
-      isOnCooldown = true;
-      console.log("Cooldown started");
-      silenceTimer = null;
-      setTimeout(() => {
-        isOnCooldown = false;
-        console.log("Cooldown period ended");
-      }, cooldownTime);
+      isProcessing = true;
     } catch (err) {
       console.error("Error getting blob:", err);
     }
