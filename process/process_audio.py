@@ -22,7 +22,6 @@ print("Transcription:", conversation_text)
 
 # Send text to Ollama for sentiment analysis
 ollama_api_url = "http://localhost:1122/api/generate"
-# prompt = f"Classify the sentiment of this conversation as either 'positive', 'neutral', or 'negative'. Respond with only one of these words and nothing else with no explanation: '{conversation_text}'"
 
 
 def generate_prompt(conversation_text):

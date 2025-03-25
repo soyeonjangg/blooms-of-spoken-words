@@ -15,7 +15,7 @@ let _defaultParams;
 
 function createSettingsGui(params, { load, callback }) {
   _defaultParams = { ...params };
-
+  console.log("Default parameters:", _defaultParams);
   // load last params
   _savedParams = getItem("params");
 
@@ -34,11 +34,13 @@ function createSettingsGui(params, { load, callback }) {
   //   storeItem("params", params);
   // });
 
-  // _paramGui.prototype.addButton("Reset", function () {
-  //   for (const key in _defaultParams) {
-  //     params[key] = _defaultParams[key];
-  //   }
-  // });
+  _paramGui.prototype.addButton("Reset", function () {
+    flowerLayer.clear();
+    flowers = [];
+    for (const key in _defaultParams) {
+      params[key] = _defaultParams[key];
+    }
+  });
 
   _paramGui.addObject(params);
 

@@ -6,7 +6,7 @@ let isProcessing = false; // Track whether the system is waiting for sentiment
 
 let mic, recorder, soundFile, video, amplitude;
 let recording = false;
-let threshold = 0.004;
+let threshold = 0.015; //find an appropriate threshold
 let stopTimer, stopTimerStart;
 let delayTime = 30000;
 let selectedFlower;
@@ -14,7 +14,6 @@ let selectedFlower;
 let sentiment = "neutral";
 let negativity;
 let plantCol = [0, 255, 0, 150];
-
 let params = {
   numNegativeSentiments: 0,
   numNegativeSentimentsMax: 50,
@@ -35,6 +34,7 @@ let gui;
 let toggleButton;
 let blocks = [];
 const socket = io();
+
 let demoMode = true;
 let buttercup,
   marigold,
@@ -54,7 +54,7 @@ let buttercup,
   honeysuckle,
   pink_rose;
 
-let positiveFlowers, negativeFlowers;
+let positiveFlowers, negativeFlowers, neutralFlowers;
 function preload() {
   let targetWidth = 150; // Set the desired width
   let targetHeight = 150; // Set the desired height
@@ -139,6 +139,7 @@ function preload() {
     thistle,
     thorn_apple,
   ];
+  neutralFlowers = negativeFlowers.concat(positiveFlowers);
 
   handpose = ml5.handPose(
     {
@@ -146,7 +147,6 @@ function preload() {
       maxHands: 1,
       modelType: "full",
     },
-    // callback when loaded
     () => {
       console.log("🚀 model loaded");
     }
@@ -186,6 +186,8 @@ function setup() {
         localStorage.setItem("liveMode", false);
         console.log("Demo mode enabled");
       } else {
+        flowerLayer.clear();
+
         _paramGui.hide();
         localStorage.setItem("liveMode", true);
         console.log("Demo mode disabled");
@@ -223,15 +225,17 @@ function setup() {
       paintRandomFlowerOnEdges();
 
       if (sentiment === "negative") {
-        let numPixels = numFlower;
-        let pixelSize = 15;
+        let numPixels = floor(numFlower * 1.5);
+        let pixelSize = 17;
         for (let i = 0; i < numPixels; i++) {
           let x = random(width);
           let y = random(height);
           blocks.push({ x, y, size: pixelSize });
         }
       } else if (sentiment === "positive") {
-        for (let i = 0; i < numFlower; i++) {
+        numPixels = floor(numFlower / 2); // for 2 positivity intensity, can remove 1
+
+        for (let i = 0; i < numPixels; i++) {
           if (blocks.length > 0) {
             let randomIndex = floor(random(blocks.length));
             blocks.splice(randomIndex, 1);
@@ -271,10 +275,12 @@ function draw() {
 
   if (predictions.length > 0) {
     let hand = predictions[0]; // first hand detection
-    let indexFinger = hand.keypoints[8]; // index finger tip
-    let thumb = hand.keypoints[4];
-    let middleFinger = hand.keypoints[12];
 
+    let indexFinger = hand.keypoints[8]; // index finger tip
+    let indexFinger2 = hand.keypoints[7];
+    let indexFinger3 = hand.keypoints[6];
+    let middleFinger = hand.keypoints[12];
+    let middleFinger1 = hand.keypoints[11];
     let indexX = indexFinger.x;
     let indexY = indexFinger.y;
 
@@ -312,6 +318,10 @@ function draw() {
     if (vol >= threshold) {
       if (!recording && !isProcessing) {
         startRecording();
+        if (!firstTrigger) {
+          recordingStartTime = millis();
+          firstTrigger = 1;
+        }
         console.log("Recording started because volume >= threshold:", vol);
       }
 
@@ -341,6 +351,7 @@ function clearLiveMode() {
 
 let numNegativity = 0;
 let numPositivity = 0;
+
 function paramChanged() {
   // Simulate positive sentiments
   if (params.numPositiveSentiments > numPositivity) {
@@ -363,8 +374,9 @@ function paramChanged() {
   // Add black patches for negativity intensity
   if (params.negativityIntensity > prevNegativityIntensity) {
     let diff = params.negativityIntensity - prevNegativityIntensity;
-    let numPixels = diff; // Number of black squares to add
+    let numPixels = floor(diff * 1.5); // Number of black squares to add
     let pixelSize = 15; // Size of each square
+
     for (let i = 0; i < numPixels; i++) {
       let x = random(width);
       let y = random(height);
@@ -375,10 +387,10 @@ function paramChanged() {
   // Remove black patches for positivity intensity
   if (params.positivityIntensity > prevPositivityIntensity) {
     let diff = params.positivityIntensity - prevPositivityIntensity;
-    let numPixels = diff; // Number of black squares to remove
+    let numPixels = floor(diff / 2); // Number of black squares to remove
     for (let i = 0; i < numPixels; i++) {
       if (blocks.length > 0) {
-        blocks.pop(); // Remove the last block
+        blocks.pop();
       }
     }
   }

@@ -19,6 +19,8 @@ function paintRandomFlowerOnEdges() {
       spawnFlowerOnEdge(positiveFlowers);
     } else if (sentiment === "negative") {
       spawnFlowerOnEdge(negativeFlowers);
+    } else if (sentiment === "neutral") {
+      spawnFlowerOnEdge(neutralFlowers);
     }
   }
 }
@@ -89,7 +91,7 @@ function spawnFlowerOnEdge(flowerImages) {
     xs: [],
     ys: [],
     colors: [],
-    opacity: 255, // Initialize opacity
+    opacity: 255,
   });
 }
 
@@ -107,8 +109,8 @@ function paintFlower(flower, img, x, y) {
   let elapsedTime = millis() - flower.spawnTime;
 
   if (elapsedTime <= delay) {
-    let alpha = map(elapsedTime, 0, delay, 255, 0); // Gradually reduce alpha from 128 to 0
-    tint(255, alpha); // Apply dynamic transparency
+    let alpha = map(elapsedTime, 0, delay, 255, 0);
+    tint(255, alpha);
     image(
       flower.img,
       flower.x - flower.img.width / 2,
@@ -131,10 +133,7 @@ function paintFlower(flower, img, x, y) {
         flower.xs.push(scaledX);
         flower.ys.push(scaledY);
         flower.colors.push(c);
-        // if (flower.negativity) {
-        //   let gray = random(0, 255); // Generate a random grayscale value
-        //   c = color(gray, gray, gray); // Create a grayscale color
-        // }
+
         flowerLayer.stroke(c);
         flowerLayer.strokeWeight(random(1, 4));
         flowerLayer.point(scaledX, scaledY);
