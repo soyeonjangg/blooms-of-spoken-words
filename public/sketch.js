@@ -12,7 +12,7 @@ let delayTime = 30000;
 let selectedFlower;
 
 let sentiment = "neutral";
-let negativity;
+let neutrality;
 let plantCol = [0, 255, 0, 150];
 let params = {
   numNegativeSentiments: 0,
@@ -72,9 +72,7 @@ function preload() {
   marigold = loadImage("flowers/negative/marigold.png", (img) =>
     img.resize(targetWidth, targetHeight)
   );
-  nettle = loadImage("flowers/negative/nettle.png", (img) =>
-    img.resize(targetWidth, targetHeight)
-  );
+
   thistle = loadImage("flowers/negative/thistle.png", (img) =>
     img.resize(targetWidth, targetHeight)
   );
@@ -106,9 +104,7 @@ function preload() {
   rose_mary = loadImage("flowers/positive/rose_mary.png", (img) =>
     img.resize(targetWidth, targetHeight)
   );
-  snowdrop = loadImage("flowers/positive/snowdrop.png", (img) =>
-    img.resize(targetWidth, targetHeight)
-  );
+
   strawberry_blossom = loadImage(
     "flowers/positive/strawberry_blossom.png",
     (img) => img.resize(targetWidth, targetHeight)
@@ -116,6 +112,7 @@ function preload() {
   sweet_william = loadImage("flowers/positive/sweet_william.png", (img) =>
     img.resize(targetWidth, targetHeight)
   );
+  crackedGlass = loadImage("crack.png");
 
   // Group flowers into arrays
   positiveFlowers = [
@@ -126,7 +123,6 @@ function preload() {
     lily_of_the_valley,
     pink_rose,
     rose_mary,
-    snowdrop,
     strawberry_blossom,
     sweet_william,
   ];
@@ -135,7 +131,6 @@ function preload() {
     columbine,
     lavender,
     marigold,
-    nettle,
     thistle,
     thorn_apple,
   ];
@@ -185,10 +180,11 @@ function setup() {
 
       if (sentiment === "negative") {
         let numPixels = floor(numFlower * 1.5);
-        let pixelSize = 17;
+
         for (let i = 0; i < numPixels; i++) {
           let x = random(width);
           let y = random(height);
+          let pixelSize = random(13, 35);
           blocks.push({ x, y, size: pixelSize });
         }
       } else if (sentiment === "positive") {
@@ -221,13 +217,26 @@ function draw() {
   for (let i = flowers.length - 1; i >= 0; i--) {
     let flower = flowers[i];
     paintFlower(flower);
+
+    if (flower.neutrality) {
+      flower.lifespan -= 1;
+    }
+    flower.size *= 0.99;
+
+    if (flower.lifespan <= 0) {
+      let i = flowers.indexOf(flower);
+      flowers.splice(i, 1);
+    }
   }
 
   for (let block of blocks) {
     fill(0, 0, 0);
     noStroke();
     rect(block.x, block.y, block.size, block.size);
+    // imageMode(CENTER);
+    // flowerLayer.image(crackedGlass, block.x, block.y, block.size, block.size);
   }
+
   hand = predictions[0];
 
   if (predictions.length > 0) {

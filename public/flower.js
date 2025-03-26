@@ -14,9 +14,9 @@ function paintRandomFlowerOnEdges() {
 }
 
 function spawnFlowerOnEdge(flowerImages) {
-  let flowerSize = 100;
+  let initialSize = 100; // Initial size of the flower
   let scaleFactor = 1;
-  let scaledFlowerRadius = (flowerSize * scaleFactor) / 2;
+  let scaledFlowerRadius = (initialSize * scaleFactor) / 2;
   let maxRetries = 10;
 
   let x, y;
@@ -65,24 +65,26 @@ function spawnFlowerOnEdge(flowerImages) {
 
   let img = random(flowerImages);
 
-  negativity = sentiment === "negative";
+  neutrality = sentiment === "neutral";
   // Create a p5.Graphics object for this flower
-  let flowerGraphics = createGraphics(flowerSize * 1.5, flowerSize * 1.5);
+  let flowerGraphics = createGraphics(initialSize * 1.5, initialSize * 1.5);
   flowerGraphics.imageMode(CENTER);
-  flowerGraphics.image(img, flowerSize / 2, flowerSize / 2);
+  flowerGraphics.image(img, initialSize / 2, initialSize / 2);
+
   let rotation = random(TWO_PI); // Random angle between 0 and 2*PI
   flowers.push({
     img,
     x,
     y,
     lifespan: 400,
-    negativity,
+    neutrality,
     xs: [],
     ys: [],
     colors: [],
     opacity: 255,
     graphics: flowerGraphics,
     rotation,
+    size: initialSize,
   });
 
   if (flowers.length > MAX_FLOWERS) {
@@ -105,32 +107,41 @@ function paintFlower(flower) {
 
   if (elapsedTime <= delay) {
     let alpha = map(elapsedTime, 0, delay, 255, 0);
-    tint(255, alpha);
-    flowerLayer.translate(flower.x, flower.y);
-    flowerLayer.rotate(flower.rotation);
+    tint(255, flower.opacity); // Use the flower's opacity
+
+    // Apply rotation and render the flower
+    flowerLayer.translate(flower.x, flower.y); // Move to the flower's position
+    flowerLayer.rotate(flower.rotation); // Apply the flower's rotation
     image(
       flower.graphics,
-      flower.x - flower.graphics.width / 2,
-      flower.y - flower.graphics.height / 2
+      -flower.size / 2,
+      -flower.size / 2,
+      flower.size,
+      flower.size
     );
-    flowerLayer.resetMatrix();
+    flowerLayer.resetMatrix(); // Reset transformations
   }
-  if (millis() - flower.spawnTime > delay) {
+
+  if (elapsedTime > delay) {
     noTint();
+
     for (let i = 0; i < numSamples; i++) {
       let sourceX = floor(random(0, flower.graphics.width));
       let sourceY = floor(random(0, flower.graphics.height));
       let c = flower.graphics.get(sourceX, sourceY);
 
       if (alpha(c) > 0) {
-        let scaledX =
-          flower.x +
-          (sourceX - flower.graphics.width / 2) * scaleFactor +
-          random(-1, 1);
-        let scaledY =
-          flower.y +
-          (sourceY - flower.graphics.height / 2) * scaleFactor +
-          random(-1, 1);
+        let offsetX = sourceX - flower.graphics.width / 2;
+        let offsetY = sourceY - flower.graphics.height / 2;
+
+        // Apply rotation to the sampled coordinates
+        let rotatedX =
+          offsetX * cos(flower.rotation) - offsetY * sin(flower.rotation);
+        let rotatedY =
+          offsetX * sin(flower.rotation) + offsetY * cos(flower.rotation);
+
+        let scaledX = flower.x + rotatedX * scaleFactor + random(-1, 1);
+        let scaledY = flower.y + rotatedY * scaleFactor + random(-1, 1);
 
         flower.xs.push(scaledX);
         flower.ys.push(scaledY);
