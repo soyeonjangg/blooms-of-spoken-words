@@ -26,32 +26,72 @@ app.use(express.static("public"));
 
 let lastSentiment = null;
 
-app.post("/transcribe", upload.single("audio"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No audio file uploaded" });
+function sendSentimentToServer(sentiment, numFlower) {
+  // Create the JSON payload
+  const payload = {
+    sentiment: sentiment,
+    numFlower: numFlower,
+  };
+
+  console.log("Sending sentiment to server:", payload);
+
+  // Send the POST request
+  fetch("http://localhost:3001/sentiment", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json", // Specify JSON content type
+    },
+    body: JSON.stringify(payload), // Convert the payload to a JSON string
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json(); // Parse the JSON response
+    })
+    .then((data) => {
+      console.log("Server response:", data);
+    })
+    .catch((error) => {
+      console.error("Error sending sentiment to server:", error);
+    });
+}
+
+let transcribedText = ""; // Store the transcribed text temporarily
+
+app.post("/upload-text", (req, res) => {
+  if (req.body.text) {
+    transcribedText = req.body.text; // Update the global variable
+    console.log("Received transcribed text:", transcribedText);
+
+    // Send a valid JSON response
+    res.status(200).json({ text: `Processed: ${transcribedText}` });
+
+    exec(
+      `uv run /Users/soyeonjang/github/digital-plant/process/process_audio.py`,
+      (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error executing Python script: ${error.message}`);
+          return res.status(500).json({ error: "Error processing text" });
+        }
+        if (stderr) {
+          console.error(`Python script stderr: ${stderr}`);
+        }
+        console.log(`Python script stdout: ${stdout}`);
+      }
+    );
+  } else {
+    console.error("No text provided in the request body.");
+    res.status(400).send("No text provided");
   }
+});
 
-  const audioPath = `uploads/${req.file.originalname}`;
-  fs.writeFileSync(audioPath, req.file.buffer);
-  console.log("Going to process the audio..");
-  isProcessing = true;
-
-  exec(
-    "uv run /Users/soyeonjang/github/digital-plant/process/process_audio.py uploads/audio.wav",
-    (error, stdout, stderr) => {
-      if (error) {
-        console.error(
-          `Error executing Python script remotely: ${error.message}`
-        );
-        return;
-      }
-      if (stderr) {
-        console.error(`Python script stderr: ${stderr}`);
-        return;
-      }
-      console.log(`Python script stdout: ${stdout}`);
-    }
-  );
+app.get("/upload-text", (req, res) => {
+  if (transcribedText) {
+    res.status(200).send(transcribedText);
+  } else {
+    res.status(404).send("No transcribed text available");
+  }
 });
 
 app.post("/sentiment", (req, res) => {

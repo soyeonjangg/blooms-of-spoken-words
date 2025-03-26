@@ -1,27 +1,13 @@
 function paintRandomFlowerOnEdges() {
   flowers = [];
 
-  if (demoMode) {
-    console.log(
-      `Demo Mode: Painting ${prevPositivityIntensity} positive flowers and ${params.negativityIntensity} flowers.`
-    );
-
-    for (let i = 0; i < prevPositivityIntensity; i++) {
-      spawnFlowerOnEdge(positiveFlowers);
-    }
-
-    for (let j = 0; j < prevNegativityIntensity; j++) {
-      spawnFlowerOnEdge(negativeFlowers);
-    }
-  } else {
-    console.log(`Received ${sentiment} sentiment. Painting..`);
-    if (sentiment === "positive") {
-      spawnFlowerOnEdge(positiveFlowers);
-    } else if (sentiment === "negative") {
-      spawnFlowerOnEdge(negativeFlowers);
-    } else if (sentiment === "neutral") {
-      spawnFlowerOnEdge(neutralFlowers);
-    }
+  console.log(`Received ${sentiment} sentiment. Painting..`);
+  if (sentiment === "positive") {
+    spawnFlowerOnEdge(positiveFlowers);
+  } else if (sentiment === "negative") {
+    spawnFlowerOnEdge(negativeFlowers);
+  } else if (sentiment === "neutral") {
+    spawnFlowerOnEdge(neutralFlowers);
   }
 }
 
@@ -77,11 +63,8 @@ function spawnFlowerOnEdge(flowerImages) {
 
   let img = random(flowerImages);
 
-  if (demoMode) {
-    negativity = flowerImages === negativeFlowers;
-  } else {
-    negativity = sentiment === "negative";
-  }
+  negativity = sentiment === "negative";
+
   flowers.push({
     img,
     x,

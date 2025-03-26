@@ -2,26 +2,35 @@
 # currently have samantha mistral model installed: https://ollama.com/library/samantha-mistral
 
 import sys
-from faster_whisper import WhisperModel
 import numpy as np
 import requests
 import json
 
-if len(sys.argv) < 2:
-    print("Usage: python process_audio.py <file_path>")
-    sys.exit(1)
-file_path = sys.argv[1]
-
-model_size = "large-v3"
-model = WhisperModel(model_size, device="cpu", compute_type="int8")
-
-segments, info = model.transcribe(file_path, beam_size=5, language="en")
-conversation_text = " ".join([segment.text for segment in list(segments)])
-print("Transcription:", conversation_text)
-
 
 # Send text to Ollama for sentiment analysis
 ollama_api_url = "http://localhost:1122/api/generate"
+
+server_url = "http://localhost:3000/upload-text"
+
+
+def fetch_transcribed_text():
+    try:
+        response = requests.get(server_url)
+        if response.status_code == 200:
+            transcribed_text = response.text.strip()  # Get the text content
+            print("Fetched transcribed text:", transcribed_text)
+            return transcribed_text
+        else:
+            print(
+                "Error fetching transcribed text:", response.status_code, response.text
+            )
+            return None
+    except requests.exceptions.RequestException as e:
+        print("Error connecting to the server:", e)
+        return None
+
+
+conversation_text = fetch_transcribed_text()
 
 
 def generate_prompt(conversation_text):
@@ -35,44 +44,51 @@ def generate_prompt(conversation_text):
     """
 
 
-prompt = generate_prompt(conversation_text)
+# Fetch the transcribed text from the server
+conversation_text = fetch_transcribed_text()
 
-try:
-    response = requests.post(
-        ollama_api_url,
-        json={"model": "llama3.1", "prompt": prompt, "stream": False},
-    )
-    if response.status_code == 200:
-        sentiment_analysis = response.json().get("response", "Error in response")
-        sentiment_analysis = sentiment_analysis.lower()
+if conversation_text:
+    # Generate the prompt for the LLM
+    prompt = generate_prompt(conversation_text)
 
-        if "sentiment:" in sentiment_analysis and "flowers:" in sentiment_analysis:
-            parts = sentiment_analysis.split(",")
-            sentiment = parts[0].split(":")[1].strip()
-            num_flower = int(parts[1].split(":")[1].strip())
+    try:
+        # Send the prompt to the LLM
+        response = requests.post(
+            ollama_api_url,
+            json={"model": "gemma:2b", "prompt": prompt, "stream": False},
+        )
+        if response.status_code == 200:
+            sentiment_analysis = response.json().get("response", "Error in response")
+            sentiment_analysis = sentiment_analysis.lower()
+            print("Before processing: ", sentiment_analysis)
+            if "sentiment:" in sentiment_analysis and "flowers:" in sentiment_analysis:
+                parts = sentiment_analysis.split(",")
+                sentiment = parts[0].split(":")[1].strip()
+                num_flower = int(parts[1].split(":")[1].strip())
 
-            # result = [sentiment, num_flower]
-            # result = json.dumps(result)
-            result = {"sentiment": sentiment, "numFlower": num_flower}
-            result = json.dumps(result)
-            print("Sentiment Analysis Result:", result)
+                result = {"sentiment": sentiment, "numFlower": num_flower}
+                result = json.dumps(result)
+                print("Sentiment Analysis Result:", result)
 
-            server_url = (
-                "http://localhost:3000/sentiment"  # Replace with your server's endpoint
-            )
-            server_response = requests.post(
-                server_url,
-                json={"sentiment": result},
-                headers={"Content-Type": "application/json"},
-            )
-            if server_response.status_code == 200:
-                print("Sentiment successfully sent to the server.")
+                # Send the result to the server
+                result_server_url = "http://localhost:3000/sentiment"
+                server_response = requests.post(
+                    result_server_url,
+                    json={"sentiment": result},
+                    headers={"Content-Type": "application/json"},
+                )
+                if server_response.status_code == 200:
+                    print("Sentiment successfully sent to the server.")
+                else:
+                    print(
+                        "Error sending sentiment to the server:", server_response.text
+                    )
             else:
-                print("Error sending sentiment to the server:", server_response.text)
+                print("Unexpected response format:", sentiment_analysis)
         else:
-            print("Unexpected response format: ", sentiment_analysis)
-    else:
-        print("Error communicating with Ollama API:", response.text)
+            print("Error communicating with Ollama API:", response.text)
 
-except requests.exceptions.RequestException as e:
-    print("Error connecting to Ollama API:", e)
+    except requests.exceptions.RequestException as e:
+        print("Error connecting to Ollama API:", e)
+else:
+    print("No transcribed text available to process.")

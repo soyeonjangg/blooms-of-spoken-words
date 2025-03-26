@@ -1,70 +1,45 @@
-function startRecording() {
-  if (mic.enabled && !recording) {
-    soundFile = new p5.SoundFile();
+let debounceTimer = null; // Timer for debouncing
 
-    console.log("Recording started...");
-    recording = true;
-    recorder.record(soundFile);
+function gotSpeech() {
+  if (speechRec.resultValue) {
+    let recognizedText = speechRec.resultString; // Get the recognized text
+    console.log("Recognized speech:", recognizedText);
 
-    soundFile.onended(stopRecording);
-  } else {
-    console.error("Microphone not enabled yet!");
+    // Debounce the server request
+    debounceSendToServer(recognizedText, 1000); // Wait 1 second before sending
   }
 }
 
-async function stopRecording() {
-  console.log("should stop?");
-
-  if (recorder && soundFile) {
-    recording = false;
-    recorder.stop();
-    console.log("Stopped recording");
-
-    try {
-      await waitForSoundFileToLoad(soundFile);
-      console.log("Sound file ready");
-      sendAudioToServer(soundFile.getBlob());
-      isProcessing = true;
-    } catch (err) {
-      console.error("Error getting blob:", err);
-    }
-  } else {
-    console.error("Recorder or SoundFile not initialized");
+function debounceSendToServer(text, delay) {
+  // Clear the previous timer
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
   }
+
+  // Set a new timer
+  debounceTimer = setTimeout(() => {
+    sendTextToServer(text); // Send the text to the server after the delay
+  }, delay);
 }
 
-async function waitForSoundFileToLoad(soundFile, maxWaitTime = 50000) {
-  const interval = 100;
-  let waited = 0;
-  console.log("Waiting for sound file to load...");
-  while (!soundFile.isLoaded()) {
-    if (waited >= maxWaitTime) {
-      throw new Error("Sound file did not load in time");
-    }
-    await new Promise((resolve) => setTimeout(resolve, interval));
-    waited += interval;
-    console.log(waited);
-  }
-}
+function sendTextToServer(text) {
+  console.log("Sending recognized text to server:", text);
 
-function sendAudioToServer(blob) {
-  let formData = new FormData();
-  formData.append("audio", blob, "audio.wav");
-  console.log("Sent auido to server..");
-  fetch("http://localhost:3000/transcribe", {
+  fetch("http://localhost:3000/upload-text", {
     method: "POST",
-    body: formData,
+    headers: {
+      "Content-Type": "application/json", // Specify JSON content type
+    },
+    body: JSON.stringify({ text: text }), // Send text as JSON
   })
-    .then((response) => response.json())
-    .then((data) => {
-      console.log("Transcription:", data.text);
-      displayTranscription(data.text);
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
     })
-    .catch((error) => console.error("Error:", error));
-}
-
-function displayTranscription(text) {
-  let output = document.createElement("p");
-  output.textContent = text;
-  document.body.appendChild(output);
+    .then((data) => {
+      console.log("Server Response from:", data);
+    })
+    .catch((error) => console.error("Error sending text to server:", error));
 }

@@ -25,7 +25,7 @@ let params = {
   negativityIntensityMax: 10,
 };
 
-let lastDemoIntensity = 0;
+// let lastDemoIntensity = 0;
 let handpose;
 let hand;
 let prevPositivityIntensity = 0;
@@ -35,7 +35,7 @@ let toggleButton;
 let blocks = [];
 const socket = io();
 
-let demoMode = true;
+// let demoMode = true;
 let buttercup,
   marigold,
   org_lily,
@@ -165,56 +165,15 @@ function setup() {
   video.hide();
   flowerLayer = createGraphics(windowWidth, windowHeight);
 
-  createSettingsGui(params, { callback: paramChanged, load: false });
-
-  _paramGui.show();
-
-  if (!localStorage.getItem("liveMode")) {
-    toggleButton = createButton("Turn Off Demo");
-    toggleButton.class("toggle-button");
-
-    console.log(demoMode);
-    let guiX = 10;
-    let guiY = 50;
-    let guiHeight = 200;
-
-    toggleButton.position(guiX, guiY - 40);
-    toggleButton.mousePressed(() => {
-      demoMode = !demoMode;
-      if (demoMode) {
-        _paramGui.show();
-        localStorage.setItem("liveMode", false);
-        console.log("Demo mode enabled");
-      } else {
-        flowerLayer.clear();
-
-        _paramGui.hide();
-        localStorage.setItem("liveMode", true);
-        console.log("Demo mode disabled");
-        toggleButton.hide();
-        flowerLayer.clear();
-        flowers = [];
-      }
-    });
-  }
-
   handpose.detectStart(video, (results) => {
     predictions = results; // Store predictions globally
   });
-  mic = new p5.AudioIn();
 
-  recorder = new p5.SoundRecorder();
-  recorder.setInput(mic);
+  speechRec = new p5.SpeechRec("en-US", gotSpeech); // Set language and callback
+  speechRec.continuous = true; // Keep listening until stopped
+  speechRec.interimResults = false; // Show partial results while speaking
 
-  amplitude = new p5.Amplitude();
-  amplitude.setInput(mic);
-
-  console.log("recorder init,", recorder);
-  if (!mic.enabled) {
-    mic.start(() => {
-      console.log("Mic started");
-    });
-  }
+  speechRec.start();
 
   socket.on("sentiment", (data) => {
     console.log(`Sentiment: ${data.sentiment}, Intensity: ${data.numFlower}`);
@@ -243,9 +202,6 @@ function setup() {
         }
       }
     }
-
-    isProcessing = false;
-    console.log("Ready for the next recording..");
   });
 
   socket.on("connect", () => {
@@ -303,39 +259,12 @@ function draw() {
       selectedFlower.x = indexX;
       selectedFlower.y = indexY;
 
-      flowerLayer.clear();
+      // flowerLayer.clear();
       image(
         selectedFlower.img,
         selectedFlower.x - selectedFlower.img.width / 2,
         selectedFlower.y - selectedFlower.img.height / 2
       );
-    }
-  }
-
-  if (mic && !demoMode) {
-    let vol = amplitude.getLevel();
-
-    if (vol >= threshold) {
-      if (!recording && !isProcessing) {
-        startRecording();
-        if (!firstTrigger) {
-          recordingStartTime = millis();
-          firstTrigger = 1;
-        }
-        console.log("Recording started because volume >= threshold:", vol);
-      }
-
-      if (recording) {
-        clearTimeout(silenceTimer);
-        silenceTimer = null;
-        console.log(
-          "Resetting silence timer because people are still talking:",
-          vol
-        );
-      }
-    } else if (vol < threshold && recording && !silenceTimer) {
-      console.log("Starting silence timer because volume < threshold:", vol);
-      silenceTimer = setTimeout(stopRecording, 20000);
     }
   }
 }
@@ -351,53 +280,6 @@ function clearLiveMode() {
 
 let numNegativity = 0;
 let numPositivity = 0;
-
-function paramChanged() {
-  // Simulate positive sentiments
-  if (params.numPositiveSentiments > numPositivity) {
-    let diff = params.numPositiveSentiments - numPositivity;
-    for (let i = 0; i < diff; i++) {
-      spawnFlowerOnEdge(positiveFlowers);
-    }
-    numPositivity = params.numPositiveSentiments;
-  }
-
-  // Simulate negative sentiments
-  if (params.numNegativeSentiments > numNegativity) {
-    let diff = params.numNegativeSentiments - numNegativity;
-    for (let i = 0; i < diff; i++) {
-      spawnFlowerOnEdge(negativeFlowers);
-    }
-    numNegativity = params.numNegativeSentiments;
-  }
-
-  // Add black patches for negativity intensity
-  if (params.negativityIntensity > prevNegativityIntensity) {
-    let diff = params.negativityIntensity - prevNegativityIntensity;
-    let numPixels = floor(diff * 1.5); // Number of black squares to add
-    let pixelSize = 15; // Size of each square
-
-    for (let i = 0; i < numPixels; i++) {
-      let x = random(width);
-      let y = random(height);
-      blocks.push({ x, y, size: pixelSize });
-    }
-  }
-
-  // Remove black patches for positivity intensity
-  if (params.positivityIntensity > prevPositivityIntensity) {
-    let diff = params.positivityIntensity - prevPositivityIntensity;
-    let numPixels = floor(diff / 2); // Number of black squares to remove
-    for (let i = 0; i < numPixels; i++) {
-      if (blocks.length > 0) {
-        blocks.pop();
-      }
-    }
-  }
-
-  prevNegativityIntensity = params.negativityIntensity;
-  prevPositivityIntensity = params.positivityIntensity;
-}
 
 const colours = [
   "Red",
