@@ -220,8 +220,9 @@ function draw() {
 
   for (let i = flowers.length - 1; i >= 0; i--) {
     let flower = flowers[i];
-    paintFlower(flower, flower.img, flower.x, flower.y);
+    paintFlower(flower);
   }
+
   for (let block of blocks) {
     fill(0, 0, 0);
     noStroke();
@@ -259,7 +260,7 @@ function draw() {
       selectedFlower.x = indexX;
       selectedFlower.y = indexY;
 
-      // flowerLayer.clear();
+      flowerLayer.clear();
       image(
         selectedFlower.img,
         selectedFlower.x - selectedFlower.img.width / 2,

@@ -30,18 +30,6 @@ function createSettingsGui(params, { load, callback }) {
   // settings gui
   _paramGui = createGui("Sentiment Controls");
 
-  // _paramGui.prototype.addButton("Save", function () {
-  //   storeItem("params", params);
-  // });
-
-  _paramGui.prototype.addButton("Reset", function () {
-    flowerLayer.clear();
-    flowers = [];
-    for (const key in _defaultParams) {
-      params[key] = _defaultParams[key];
-    }
-  });
-
   _paramGui.addObject(params);
 
   if (callback) _paramGui.prototype.setGlobalChangeHandler(callback);

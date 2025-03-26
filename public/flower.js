@@ -1,5 +1,7 @@
+const MAX_FLOWERS = 50;
+
 function paintRandomFlowerOnEdges() {
-  flowers = [];
+  // flowers = [];
 
   console.log(`Received ${sentiment} sentiment. Painting..`);
   if (sentiment === "positive") {
@@ -64,7 +66,11 @@ function spawnFlowerOnEdge(flowerImages) {
   let img = random(flowerImages);
 
   negativity = sentiment === "negative";
-
+  // Create a p5.Graphics object for this flower
+  let flowerGraphics = createGraphics(flowerSize * 1.5, flowerSize * 1.5);
+  flowerGraphics.imageMode(CENTER);
+  flowerGraphics.image(img, flowerSize / 2, flowerSize / 2);
+  let rotation = random(TWO_PI); // Random angle between 0 and 2*PI
   flowers.push({
     img,
     x,
@@ -75,10 +81,16 @@ function spawnFlowerOnEdge(flowerImages) {
     ys: [],
     colors: [],
     opacity: 255,
+    graphics: flowerGraphics,
+    rotation,
   });
+
+  if (flowers.length > MAX_FLOWERS) {
+    flowers.shift();
+  }
 }
 
-function paintFlower(flower, img, x, y) {
+function paintFlower(flower) {
   flowerLayer.push();
 
   let scaleFactor = 1;
@@ -94,24 +106,31 @@ function paintFlower(flower, img, x, y) {
   if (elapsedTime <= delay) {
     let alpha = map(elapsedTime, 0, delay, 255, 0);
     tint(255, alpha);
+    flowerLayer.translate(flower.x, flower.y);
+    flowerLayer.rotate(flower.rotation);
     image(
-      flower.img,
-      flower.x - flower.img.width / 2,
-      flower.y - flower.img.height / 2
+      flower.graphics,
+      flower.x - flower.graphics.width / 2,
+      flower.y - flower.graphics.height / 2
     );
+    flowerLayer.resetMatrix();
   }
   if (millis() - flower.spawnTime > delay) {
     noTint();
     for (let i = 0; i < numSamples; i++) {
-      let sourceX = floor(random(0, img.width));
-      let sourceY = floor(random(0, img.height));
-      let c = img.get(sourceX, sourceY);
+      let sourceX = floor(random(0, flower.graphics.width));
+      let sourceY = floor(random(0, flower.graphics.height));
+      let c = flower.graphics.get(sourceX, sourceY);
 
       if (alpha(c) > 0) {
         let scaledX =
-          x + (sourceX - img.width / 2) * scaleFactor + random(-1, 1);
+          flower.x +
+          (sourceX - flower.graphics.width / 2) * scaleFactor +
+          random(-1, 1);
         let scaledY =
-          y + (sourceY - img.height / 2) * scaleFactor + random(-1, 1);
+          flower.y +
+          (sourceY - flower.graphics.height / 2) * scaleFactor +
+          random(-1, 1);
 
         flower.xs.push(scaledX);
         flower.ys.push(scaledY);

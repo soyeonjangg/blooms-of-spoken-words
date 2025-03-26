@@ -39,9 +39,9 @@ function sendSentimentToServer(sentiment, numFlower) {
   fetch("http://localhost:3001/sentiment", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json", // Specify JSON content type
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload), // Convert the payload to a JSON string
+    body: JSON.stringify(payload), // payload to a JSON string
   })
     .then((response) => {
       if (!response.ok) {
@@ -57,7 +57,7 @@ function sendSentimentToServer(sentiment, numFlower) {
     });
 }
 
-let transcribedText = ""; // Store the transcribed text temporarily
+let transcribedText = "";
 
 app.post("/upload-text", (req, res) => {
   if (req.body.text) {
