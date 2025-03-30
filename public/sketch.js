@@ -154,7 +154,6 @@ function setup() {
 
   createCanvas(windowWidth, windowHeight);
   video = createCapture(VIDEO, { flipped: true });
-
   video.size(windowWidth, windowHeight);
 
   video.hide();
@@ -210,8 +209,12 @@ function setup() {
 }
 
 function draw() {
-  image(video, 0, 0, width, height);
-
+  background(0);
+  push();
+  translate(width / 2, height / 2);
+  rotate(HALF_PI);
+  image(video, -height / 2, -width / 2, height, width);
+  pop();
   image(flowerLayer, 0, 0);
 
   for (let i = flowers.length - 1; i >= 0; i--) {
