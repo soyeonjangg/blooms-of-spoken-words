@@ -233,7 +233,7 @@ function mousePressed() {
 
       if (distance < 50) {
         selectedFlower = flower;
-        console.log("FLOWER SEELCTED");
+        console.log("FLOWER SELECTED");
         isDragging = true;
         break;
       }

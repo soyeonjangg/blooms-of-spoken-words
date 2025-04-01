@@ -65,14 +65,12 @@ function spawnFlowerOnEdge(flowerImages) {
   }
 
   let img = random(flowerImages);
-
   neutrality = sentiment === "neutral";
 
-  // Create a larger p5.Graphics object for this flower
   let flowerGraphics = createGraphics(
     initialSize * scaleFactor,
     initialSize * scaleFactor
-  ); // Increased size
+  );
   flowerGraphics.imageMode(CENTER);
   flowerGraphics.image(
     img,
@@ -82,7 +80,7 @@ function spawnFlowerOnEdge(flowerImages) {
     initialSize
   );
 
-  let rotation = random(TWO_PI); // Random angle between 0 and 2*PI
+  let rotation = random(HALF_PI); // Random angle between 0 and half PI
   flowers.push({
     img,
     x,
