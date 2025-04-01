@@ -14,8 +14,8 @@ function paintRandomFlowerOnEdges() {
 }
 
 function spawnFlowerOnEdge(flowerImages) {
-  let initialSize = 100; // Initial size of the flower
-  let scaleFactor = 1;
+  let initialSize = 150; // Initial size of the flower
+  let scaleFactor = 1.5; // Increase the scale factor to accommodate rotation
   let scaledFlowerRadius = (initialSize * scaleFactor) / 2;
   let maxRetries = 10;
 
@@ -23,6 +23,7 @@ function spawnFlowerOnEdge(flowerImages) {
   let validPosition = false;
   let retryCount = 0;
 
+  console.log(mouseX, mouseY);
   while (!validPosition && retryCount < maxRetries) {
     let edge = floor(random(4));
 
@@ -66,10 +67,20 @@ function spawnFlowerOnEdge(flowerImages) {
   let img = random(flowerImages);
 
   neutrality = sentiment === "neutral";
-  // Create a p5.Graphics object for this flower
-  let flowerGraphics = createGraphics(initialSize * 1.5, initialSize * 1.5);
+
+  // Create a larger p5.Graphics object for this flower
+  let flowerGraphics = createGraphics(
+    initialSize * scaleFactor,
+    initialSize * scaleFactor
+  ); // Increased size
   flowerGraphics.imageMode(CENTER);
-  flowerGraphics.image(img, initialSize / 2, initialSize / 2);
+  flowerGraphics.image(
+    img,
+    flowerGraphics.width / 2,
+    flowerGraphics.height / 2,
+    initialSize,
+    initialSize
+  );
 
   let rotation = random(TWO_PI); // Random angle between 0 and 2*PI
   flowers.push({
@@ -110,16 +121,16 @@ function paintFlower(flower) {
     tint(255, flower.opacity); // Use the flower's opacity
 
     // Apply rotation and render the flower
-    flowerLayer.translate(flower.x, flower.y); // Move to the flower's position
-    flowerLayer.rotate(flower.rotation); // Apply the flower's rotation
+    flowerLayer.translate(flower.x, flower.y);
+    flowerLayer.rotate(flower.rotation);
     image(
       flower.graphics,
-      -flower.size / 2,
-      -flower.size / 2,
+      -flower.graphics.width / 2,
+      -flower.graphics.height / 2,
       flower.size,
       flower.size
     );
-    flowerLayer.resetMatrix(); // Reset transformations
+    flowerLayer.resetMatrix();
   }
 
   if (elapsedTime > delay) {

@@ -25,7 +25,6 @@ let params = {
   negativityIntensityMax: 10,
 };
 
-// let lastDemoIntensity = 0;
 let handpose;
 let hand;
 let prevPositivityIntensity = 0;
@@ -33,9 +32,10 @@ let prevNegativityIntensity = 0;
 let gui;
 let toggleButton;
 let blocks = [];
+let isDragging = false;
+
 const socket = io();
 
-// let demoMode = true;
 let buttercup,
   marigold,
   org_lily,
@@ -112,7 +112,6 @@ function preload() {
   sweet_william = loadImage("flowers/positive/sweet_william.png", (img) =>
     img.resize(targetWidth, targetHeight)
   );
-  crackedGlass = loadImage("crack.png");
 
   // Group flowers into arrays
   positiveFlowers = [
@@ -135,21 +134,9 @@ function preload() {
     thorn_apple,
   ];
   neutralFlowers = negativeFlowers.concat(positiveFlowers);
-
-  handpose = ml5.handPose(
-    {
-      flipped: true,
-      maxHands: 1,
-      modelType: "full",
-    },
-    () => {
-      console.log("🚀 model loaded");
-    }
-  );
 }
 
 function setup() {
-  clearLiveMode();
   soundFile = new p5.SoundFile();
 
   createCanvas(windowWidth, windowHeight);
@@ -159,13 +146,9 @@ function setup() {
   video.hide();
   flowerLayer = createGraphics(windowWidth, windowHeight);
 
-  handpose.detectStart(video, (results) => {
-    predictions = results; // Store predictions globally
-  });
-
-  speechRec = new p5.SpeechRec("en-US", gotSpeech); // Set language and callback
-  speechRec.continuous = true; // Keep listening until stopped
-  speechRec.interimResults = false; // Show partial results while speaking
+  speechRec = new p5.SpeechRec("en-US", gotSpeech);
+  speechRec.continuous = true;
+  speechRec.interimResults = false;
 
   speechRec.start();
 
@@ -209,107 +192,87 @@ function setup() {
 }
 
 function draw() {
-  background(0);
   push();
   translate(width / 2, height / 2);
   rotate(HALF_PI);
   image(video, -height / 2, -width / 2, height, width);
   pop();
-  image(flowerLayer, 0, 0);
 
+  image(flowerLayer, 0, 0, width, height);
   for (let i = flowers.length - 1; i >= 0; i--) {
     let flower = flowers[i];
     paintFlower(flower);
-
-    if (flower.neutrality) {
-      flower.lifespan -= 1;
-    }
-    flower.size *= 0.99;
-
-    if (flower.lifespan <= 0) {
-      let i = flowers.indexOf(flower);
-      flowers.splice(i, 1);
-    }
   }
 
   for (let block of blocks) {
     fill(0, 0, 0);
     noStroke();
     rect(block.x, block.y, block.size, block.size);
-    // imageMode(CENTER);
-    // flowerLayer.image(crackedGlass, block.x, block.y, block.size, block.size);
   }
 
-  hand = predictions[0];
+  if (selectedFlower) {
+    selectedFlower.x = mouseX;
+    selectedFlower.y = mouseY;
 
-  if (predictions.length > 0) {
-    let hand = predictions[0]; // first hand detection
+    flowerLayer.clear();
+    image(
+      selectedFlower.img,
+      selectedFlower.x - selectedFlower.img.width / 2,
+      selectedFlower.y - selectedFlower.img.height / 2
+    );
 
-    let indexFinger = hand.keypoints[8]; // index finger tip
-    let indexFinger2 = hand.keypoints[7];
-    let indexFinger3 = hand.keypoints[6];
-    let middleFinger = hand.keypoints[12];
-    let middleFinger1 = hand.keypoints[11];
-    let indexX = indexFinger.x;
-    let indexY = indexFinger.y;
+    // isDragging = false;
+  }
+}
 
-    fill(255, 0, 0);
-    noStroke();
-    circle(indexX, indexY, 20);
-
+function mousePressed() {
+  console.log("MOUSE: ", mouseX, mouseY);
+  if (selectedFlower == null) {
     for (let flower of flowers) {
-      let distance = dist(indexX, indexY, flower.x, flower.y);
-      console.log("distance", distance);
+      let distance = dist(mouseX, mouseY, flower.x, flower.y);
+
       if (distance < 50) {
         selectedFlower = flower;
+        console.log("FLOWER SEELCTED");
+        isDragging = true;
         break;
-      } else {
-        selectedFlower = null;
       }
     }
-
-    if (selectedFlower) {
-      selectedFlower.x = indexX;
-      selectedFlower.y = indexY;
-
-      flowerLayer.clear();
-      image(
-        selectedFlower.img,
-        selectedFlower.x - selectedFlower.img.width / 2,
-        selectedFlower.y - selectedFlower.img.height / 2
-      );
-    }
   }
+}
+
+function mouseReleased() {
+  if (selectedFlower && isDragging) {
+    pixelateFlower(selectedFlower);
+    selectedFlower = null;
+    console.log("need to release flower and pixelate");
+  }
+
+  isDragging = false;
+
+  console.log("Done dragging");
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
-function clearLiveMode() {
-  localStorage.removeItem("liveMode");
-  console.log("liveMode cleared from localStorage");
-}
+function pixelateFlower(flower) {
+  let pixelSize = 5;
+  let img = flower.img;
 
-let numNegativity = 0;
-let numPositivity = 0;
+  for (let x = 0; x < img.width; x += pixelSize) {
+    for (let y = 0; y < img.height; y += pixelSize) {
+      let c = img.get(x, y);
 
-const colours = [
-  "Red",
-  "OrangeRed",
-  "Gold",
-  "Lime",
-  "Turquoise",
-  "DodgerBlue",
-  "Blue",
-  "DarkMagenta",
-];
+      if (alpha(c) > 0) {
+        let canvasX = flower.x + x - img.width / 2;
+        let canvasY = flower.y + y - img.height / 2;
 
-function drawKeypoints(hand, i) {
-  const c = color(colours[i % colours.length]);
-  fill(c);
-  noStroke();
-  if (hand) {
-    circle(hand.keypoints[i].x, hand.keypoints[i].y, 20);
+        fill(c);
+        noStroke();
+        rect(canvasX, canvasY, pixelSize, pixelSize);
+      }
+    }
   }
 }
