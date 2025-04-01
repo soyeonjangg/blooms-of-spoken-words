@@ -1,7 +1,6 @@
-let predictions = [];
 let silenceTimer;
 let flowers = [];
-let flowerLayer, crackLayer;
+let flowerLayer;
 let isProcessing = false; // Track whether the system is waiting for sentiment
 
 let mic, recorder, soundFile, video, amplitude;
@@ -56,8 +55,8 @@ let buttercup,
 
 let positiveFlowers, negativeFlowers, neutralFlowers;
 function preload() {
-  let targetWidth = 150; // Set the desired width
-  let targetHeight = 150; // Set the desired height
+  let targetWidth = 150;
+  let targetHeight = 150;
 
   // negative flowers
   buttercup = loadImage("flowers/negative/buttercup.png", (img) =>
@@ -227,6 +226,7 @@ function draw() {
 
 function mousePressed() {
   console.log("MOUSE: ", mouseX, mouseY);
+
   if (selectedFlower == null) {
     for (let flower of flowers) {
       let distance = dist(mouseX, mouseY, flower.x, flower.y);
@@ -245,12 +245,9 @@ function mouseReleased() {
   if (selectedFlower && isDragging) {
     pixelateFlower(selectedFlower);
     selectedFlower = null;
-    console.log("need to release flower and pixelate");
   }
 
   isDragging = false;
-
-  console.log("Done dragging");
 }
 
 function windowResized() {
