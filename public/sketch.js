@@ -23,7 +23,7 @@ let params = {
   positivityIntensityMax: 10,
   negativityIntensityMax: 10,
 };
-
+let deleteFlower;
 let handpose;
 let hand;
 let prevPositivityIntensity = 0;
@@ -240,7 +240,29 @@ function mousePressed() {
     }
   }
 }
+function keyPressed() {
+  // Check if the 'd' key is pressed
+  if (key === "d" || key === "D") {
+    if (selectedFlower) {
+      // Find the index of the selected flower in the flowers array
+      let index = flowers.indexOf(selectedFlower);
 
+      // If the flower is found, remove it
+      if (index !== -1) {
+        console.log(
+          "Deleting selected flower at:",
+          selectedFlower.x,
+          selectedFlower.y
+        );
+        flowers.splice(index, 1); // Remove the flower from the array
+      }
+
+      // Clear the selected flower
+      selectedFlower = null;
+      isDragging = false;
+    }
+  }
+}
 function mouseReleased() {
   if (selectedFlower && isDragging) {
     pixelateFlower(selectedFlower);
