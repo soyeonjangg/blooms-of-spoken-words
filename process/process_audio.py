@@ -1,8 +1,5 @@
 # OLLAMA_HOST=127.0.0.1:1122 ollama serve
-# currently have samantha mistral model installed: https://ollama.com/library/samantha-mistral
 
-import sys
-import numpy as np
 import requests
 import json
 
@@ -36,7 +33,7 @@ conversation_text = fetch_transcribed_text()
 def generate_prompt(conversation_text):
     return f"""
     Classify the sentiment of the conversation. Determine if it is positive, neutral, or negative, and return the answer as the corresponding sentiment label: 'positive', 'neutral', or 'negative' with no explanation. 
-    Additionally, based on the intensity of the sentiment, return the appropriate number of flowers (an integer from 0 to 10), where 0 represents no strong sentiment and 10 represents extreme positivity or negativity. 
+    Additionally, based on the intensity of the sentiment, return the appropriate number of flowers (an integer from 0 to 10), where 0 represents no strong sentiment and 10 represents extreme sentiments. 
     Format your response as: 
     "Sentiment: [positive/neutral/negative], Flowers: [integer]"
 
@@ -44,15 +41,12 @@ def generate_prompt(conversation_text):
     """
 
 
-# Fetch the transcribed text from the server
 conversation_text = fetch_transcribed_text()
 
 if conversation_text:
-    # Generate the prompt for the LLM
     prompt = generate_prompt(conversation_text)
 
     try:
-        # Send the prompt to the LLM
         response = requests.post(
             ollama_api_url,
             json={"model": "gemma:2b", "prompt": prompt, "stream": False},

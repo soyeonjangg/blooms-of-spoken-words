@@ -14,8 +14,8 @@ function paintRandomFlowerOnEdges() {
 }
 
 function spawnFlowerOnEdge(flowerImages) {
-  let initialSize = 150; // Initial size of the flower
-  let scaleFactor = 1.5; // Increase the scale factor to accommodate rotation
+  let initialSize = 150; // Init size of the flower
+  let scaleFactor = 1.5;
   let scaledFlowerRadius = (initialSize * scaleFactor) / 2;
   let maxRetries = 10;
 
@@ -116,9 +116,8 @@ function paintFlower(flower) {
 
   if (elapsedTime <= delay) {
     let alpha = map(elapsedTime, 0, delay, 255, 0);
-    tint(255, flower.opacity); // Use the flower's opacity
+    tint(255, flower.opacity);
 
-    // Apply rotation and render the flower
     flowerLayer.translate(flower.x, flower.y);
     flowerLayer.rotate(flower.rotation);
     image(

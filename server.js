@@ -27,7 +27,6 @@ app.use(express.static("public"));
 let lastSentiment = null;
 
 function sendSentimentToServer(sentiment, numFlower) {
-  // Create the JSON payload
   const payload = {
     sentiment: sentiment,
     numFlower: numFlower,
@@ -35,7 +34,6 @@ function sendSentimentToServer(sentiment, numFlower) {
 
   console.log("Sending sentiment to server:", payload);
 
-  // Send the POST request
   fetch("http://localhost:3001/sentiment", {
     method: "POST",
     headers: {
@@ -47,7 +45,7 @@ function sendSentimentToServer(sentiment, numFlower) {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return response.json(); // Parse the JSON response
+      return response.json();
     })
     .then((data) => {
       console.log("Server response:", data);
@@ -61,10 +59,10 @@ let transcribedText = "";
 
 app.post("/upload-text", (req, res) => {
   if (req.body.text) {
-    transcribedText = req.body.text; // Update the global variable
+    transcribedText = req.body.text;
+
     console.log("Received transcribed text:", transcribedText);
 
-    // Send a valid JSON response
     res.status(200).json({ text: `Processed: ${transcribedText}` });
 
     exec(

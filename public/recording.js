@@ -1,24 +1,21 @@
-let debounceTimer = null; // Timer for debouncing
+let debounceTimer = null;
 
 function gotSpeech() {
   if (speechRec.resultValue) {
-    let recognizedText = speechRec.resultString; // Get the recognized text
+    let recognizedText = speechRec.resultString;
     console.log("Recognized speech:", recognizedText);
 
-    // Debounce the server request
-    debounceSendToServer(recognizedText, 1000); // Wait 1 second before sending
+    debounceSendToServer(recognizedText, 1000); // wait 1 second before sending
   }
 }
 
 function debounceSendToServer(text, delay) {
-  // Clear the previous timer
   if (debounceTimer) {
     clearTimeout(debounceTimer);
   }
 
-  // Set a new timer
   debounceTimer = setTimeout(() => {
-    sendTextToServer(text); // Send the text to the server after the delay
+    sendTextToServer(text); // send the text to the server after the delay
   }, delay);
 }
 
@@ -28,9 +25,9 @@ function sendTextToServer(text) {
   fetch("http://localhost:3000/upload-text", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json", // Specify JSON content type
+      "Content-Type": "application/json", // specify JSON content type
     },
-    body: JSON.stringify({ text: text }), // Send text as JSON
+    body: JSON.stringify({ text: text }), // send text as JSON
   })
     .then((response) => {
       if (!response.ok) {
