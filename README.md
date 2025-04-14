@@ -16,6 +16,7 @@ Pre-requisites:
 
 ### To run Ollama,
 `OLLAMA_HOST=127.0.0.1:1122 ollama run gemma:2b`
+Feel free to change `gemma:2b` into a more powerful model. After iterations, `gemma:2b` turned out to be the most suitable model for this project on Macbook Air M1 chip.
 
 ### Run
 Once Ollama is running locally, go to the project directory, and run `nodemon server.js`
